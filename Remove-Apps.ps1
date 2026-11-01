@@ -420,7 +420,21 @@ function Request-InstalledApp {
     elseif (-not $app.AppxName) { Write-Host 'No encontré una coincidencia exacta de WinGet; ese campo quedará vacío para que lo revises.' -ForegroundColor Yellow }
     if ($app.AppxName) { Write-Host "Nombre Appx: $($app.AppxName)" -ForegroundColor Gray }
     if ($app.ProgramFolder) { Write-Host "Carpeta detectada: $($app.ProgramFolder)" -ForegroundColor Gray }
-    else { Write-Host 'No pude detectar la carpeta de instalación; usa -Info para buscar una y verifica que sea la correcta.' -ForegroundColor Yellow }
+    $missingData = @()
+    if (-not $app.ProgramFolder) { $missingData += 'carpeta de instalación' }
+    if (-not $wingetId -and -not $app.AppxName) { $missingData += 'ID de WinGet o nombre Appx' }
+    if ($missingData.Count -gt 0) {
+        Write-Host ("No se detectó: {0}." -f ($missingData -join ', ')) -ForegroundColor Yellow
+        Write-Host 'Puedes completar el dato desde GitHub; si falta un identificador, el reporte no se agregará hasta completarlo.' -ForegroundColor Gray
+        do {
+            $continueWithMissing = (Read-Host '¿Quieres agregar la app al registro y completar esos datos después? (S/N)').Trim().ToUpperInvariant()
+            if ($continueWithMissing -notin @('S','SI','SÍ','N','NO')) { Write-Host 'Responde S o N.' -ForegroundColor Yellow }
+        } while ($continueWithMissing -notin @('S','SI','SÍ','N','NO'))
+        if ($continueWithMissing -in @('N','NO')) {
+            Write-Host 'Solicitud cancelada; no se abrió GitHub.' -ForegroundColor Yellow
+            return
+        }
+    }
     $confirmation = Read-Host 'Escribe SOLICITAR para abrir el formulario de GitHub'
     if (-not [string]::Equals($confirmation, 'SOLICITAR', [System.StringComparison]::Ordinal)) {
         Write-Host 'Solicitud cancelada.' -ForegroundColor Yellow
@@ -468,6 +482,12 @@ $programFolderValue
     $requestUrl = "https://github.com/$($settings.Repository)/issues/new?title=$title"
     Start-Process -FilePath $requestUrl
     Write-Host 'Se abrió GitHub. Verifica el título; pega la descripción si hace falta y pulsa Submit new issue cuando esté lista.' -ForegroundColor Cyan
+    do {
+        $ready = (Read-Host 'Cuando termines de copiar y revisar el reporte en GitHub, vuelve aquí y escribe LISTO').Trim()
+        if (-not [string]::Equals($ready, 'LISTO', [System.StringComparison]::OrdinalIgnoreCase)) {
+            Write-Host 'La consola se mantendrá abierta. Escribe LISTO cuando acabes en GitHub.' -ForegroundColor Yellow
+        }
+    } while (-not [string]::Equals($ready, 'LISTO', [System.StringComparison]::OrdinalIgnoreCase))
 }
 
 function Invoke-SelectedApps {
