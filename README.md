@@ -1,0 +1,62 @@
+# Desinstalador de apps para Windows 11
+
+El paquete tiene cuatro partes:
+
+- `Remove-Apps.ps1`: consulta la lista por internet, permite elegir una app y solicita confirmación antes de actuar.
+- `apps.json`: lista que se publica junto a la página web.
+- `index.html`: página para consultar la lista y abrir el formulario **Añadir una app**.
+- `.github/`: formulario web y automatización que incorpora la app a la lista.
+
+## Publicarlo una sola vez
+
+El repositorio público `EixX0/EIX-Extermination-Apps` ya está preparado para este paquete. Sube allí todos los archivos y carpetas de este paquete, incluida `.github`. `config.json` ya apunta a ese repositorio.
+
+1. Publica los archivos en la rama `main` del repositorio. Si lo haces con GitHub Desktop, clona el repositorio, copia los archivos del paquete a la raíz y luego haz commit y push.
+2. En GitHub, abre **Settings → Pages** y selecciona publicar desde la rama `main`, carpeta `/ (root)`. Guarda. La dirección será `https://eixx0.github.io/EIX-Extermination-Apps/`.
+3. En **Settings → Actions → General**, permite que los flujos tengan permisos de escritura si el repositorio los restringe. El flujo limita esos permisos a actualizar `apps.json` y cerrar la solicitud.
+
+Si quieres usar otro repositorio, cambia `repository` y `branch` en `config.json` antes de publicar.
+
+El repositorio es público para que el script y la página lean `apps.json`. El flujo automático acepta solicitudes del propietario o personas colaboradoras; otras cuentas no pueden modificar la lista.
+
+## Añadir una app desde la página
+
+1. Abre la página web publicada y pulsa **Añadir una app**.
+2. Completa el nombre y el ID exacto de WinGet, el nombre Appx, o ambos.
+3. Opcionalmente, indica rutas de residuos específicas como `LocalAppData/Empresa/Aplicacion`. Las raíces permitidas son `LocalAppData`, `RoamingAppData`, `ProgramData`, `ProgramFiles` y `ProgramFilesX86`.
+4. Envía el formulario. Cuando GitHub termine la actualización, la solicitud se cierra y la app aparece en la lista.
+
+El formulario requiere iniciar sesión en GitHub con la cuenta propietaria o colaboradora del repositorio. No hay que descargar ni editar archivos para añadir apps una vez publicado.
+
+La página pide la contraseña `recode` antes de mostrar la lista y el botón del formulario. Como el sitio es estático, es un bloqueo casual: la contraseña está en el archivo público de la página y `apps.json` también puede consultarse directamente. No lo uses para proteger información privada.
+
+## Ejecutar en Windows
+
+Deja `Remove-Apps.ps1` y `config.json` en la misma carpeta. Abre PowerShell en esa carpeta y ejecuta:
+
+```powershell
+.\Remove-Apps.ps1
+```
+
+Elige el número de una app y confirma cuando PowerShell lo solicite. Para revisar qué haría, sin desinstalar ni borrar nada:
+
+```powershell
+.\Remove-Apps.ps1 -WhatIf
+```
+
+También se puede elegir por nombre:
+
+```powershell
+.\Remove-Apps.ps1 -Name "Nombre de la app"
+```
+
+Si Windows bloquea la ejecución del archivo, abre PowerShell en la carpeta y usa `Unblock-File .\Remove-Apps.ps1`. El script no cambia la directiva de ejecución del equipo.
+
+## Qué elimina
+
+- WinGet ejecuta la desinstalación por ID exacto. Se utiliza el modo silencioso y sin selección ambigua.
+- Los paquetes Appx se quitan solo para el usuario que ejecuta el script.
+- Las rutas de residuos deben estar listadas de forma explícita para cada app. Se rechazan rutas absolutas, comodines, `.` y `..`.
+- No borra claves del Registro, archivos fuera de esas rutas ni paquetes Appx de otras cuentas de Windows.
+
+Una ruta de residuos equivocada puede borrar archivos de esa ruta. Añade solo carpetas o archivos que identifiques como propios de la app.
