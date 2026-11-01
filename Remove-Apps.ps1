@@ -470,24 +470,17 @@ try {
 
     while ($true) {
         Write-Host "`nMENÚ PRINCIPAL" -ForegroundColor Cyan
-        Write-Host '  1. Ver la lista web de apps'
-        Write-Host '  2. Desinstalar apps seleccionadas'
-        Write-Host '  3. Desinstalar todas las apps de la lista'
-        Write-Host '  4. Solicitar agregar una app instalada'
+        Write-Host '  1. Desinstalar todas las apps de la lista'
+        Write-Host '  2. Ver apps instaladas en el equipo y solicitar agregar a la lista'
         Write-Host '  0. Salir'
         $choice = Read-Host 'Elige una opción'
 
         switch ($choice) {
-            '1' { Show-ManifestList -Apps $apps }
-            '2' {
-                $selected = @(Select-ManifestApps -Apps $apps)
-                if ($selected.Count -gt 0) { Invoke-SelectedApps -Selected $selected }
-            }
-            '3' {
+            '1' {
                 if ($apps.Count -eq 0) { Write-Host 'No hay apps en la lista web.' -ForegroundColor Yellow }
                 else { Invoke-SelectedApps -Selected $apps -BatchAll }
             }
-            '4' { Request-InstalledApp }
+            '2' { Request-InstalledApp }
             '0' { return }
             default { Write-Host 'Opción inválida.' -ForegroundColor Yellow }
         }
