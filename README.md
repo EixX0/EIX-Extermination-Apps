@@ -21,7 +21,7 @@ El repositorio es público para que el script y la página lean `apps.json`. El 
 
 ## Añadir una app desde la página
 
-1. Abre la página web publicada y pulsa **Añadir una app**.
+1. Abre la página web publicada y pulsa **Añadir una app**; en GitHub, elige la plantilla **Agregar una app**.
 2. Completa el nombre y el ID exacto de WinGet, el nombre Appx, o ambos.
 3. Opcionalmente, indica rutas de residuos específicas como `LocalAppData/Empresa/Aplicacion`. Las raíces permitidas son `LocalAppData`, `RoamingAppData`, `ProgramData`, `ProgramFiles` y `ProgramFilesX86`.
 4. Envía el formulario. Cuando GitHub termine la actualización, la solicitud se cierra y la app aparece en la lista.
@@ -41,10 +41,10 @@ irm https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-A
 Ese comando descarga la versión actual del script desde el repositorio y abre un menú:
 
 - **1. Desinstalar todas las apps de la lista** muestra el resumen del lote y pide escribir `BORRAR TODO`.
-- **2. Ver apps instaladas en el equipo y solicitar agregar a la lista** muestra programas del Registro y paquetes Appx del usuario actual. Elige una para abrir su formulario de GitHub.
+- **2. Ver apps instaladas en el equipo y solicitar agregar a la lista** muestra programas del Registro y paquetes Appx del usuario actual. Elige una para abrir el selector de plantillas de GitHub; el nombre y, para Appx, el identificador se pasan como valores sugeridos.
 - **0. Salir** cierra el menú.
 
-La solicitud no se envía hasta que revises y pulses **Submit new issue** en GitHub. Completa allí el ID exacto de WinGet o el nombre de paquete Appx. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
+La solicitud no se envía hasta que elijas **Agregar una app**, revises los campos y pulses **Submit new issue** en GitHub. Completa allí el ID exacto de WinGet si aplica. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
 
 Ejecuta el comando solo si confías en el repositorio, porque `irm | iex` ejecuta el contenido descargado. La lista actual está en `apps.json`; si está vacía, las opciones de desinstalación no harán cambios.
 
