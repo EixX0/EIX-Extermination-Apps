@@ -1,4 +1,12 @@
 {
   "schemaVersion": 1,
-  "apps": []
+  "apps": [
+    {
+      "name": "Spotify",
+      "wingetId": "Spotify.Spotify",
+      "appxNames": [
+        "SpotifyAB.SpotifyMusic"
+      ]
+    }
+  ]
 }
