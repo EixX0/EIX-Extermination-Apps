@@ -2,7 +2,10 @@
 param(
     [string]$Name,
     [string]$ListUrl,
-    [switch]$Info
+    [switch]$Info,
+    [switch]$ListOnly,
+    [switch]$All,
+    [switch]$RequestInstalled
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,13 +14,7 @@ $configPath = if (-not [string]::IsNullOrWhiteSpace($scriptRoot)) { Join-Path $s
 $defaultRepository = 'EixX0/EIX-Extermination-Apps'
 $defaultBranch = 'main'
 
-function Get-ListUrl {
-    param([string]$Override)
-
-    if (-not [string]::IsNullOrWhiteSpace($Override)) {
-        return $Override
-    }
-
+function Get-RepositorySettings {
     $repository = $defaultRepository
     $branch = $defaultBranch
     if (-not [string]::IsNullOrWhiteSpace($configPath) -and (Test-Path -LiteralPath $configPath)) {
@@ -33,6 +30,19 @@ function Get-ListUrl {
     if ($repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
         throw "El repositorio configurado en config.json no tiene el formato usuario/repositorio."
     }
+    return [pscustomobject]@{ Repository = $repository; Branch = $branch }
+}
+
+function Get-ListUrl {
+    param([string]$Override)
+
+    if (-not [string]::IsNullOrWhiteSpace($Override)) {
+        return $Override
+    }
+
+    $settings = Get-RepositorySettings
+    $repository = [string]$settings.Repository
+    $branch = [string]$settings.Branch
     $encodedBranch = [uri]::EscapeDataString($branch)
     return "https://raw.githubusercontent.com/$repository/$encodedBranch/apps.json"
 }
@@ -85,9 +95,9 @@ function Get-Manifest {
 
 function Show-ToolHeader {
     Write-Host ''
-    Write-Host 'EIX OS  //  HORIZON 02' -ForegroundColor Cyan
-    Write-Host 'APP CONTROL  ·  WINDOWS 11' -ForegroundColor DarkCyan
-    Write-Host 'BEYOND THE HORIZON' -ForegroundColor Gray
+    Write-Host 'RECODED WIN' -ForegroundColor Cyan
+    Write-Host 'By EIX  //  HORIZON 02' -ForegroundColor DarkCyan
+    Write-Host 'SECURE THE CORE. CONTROL THE SYSTEM' -ForegroundColor Gray
     Write-Host ''
 }
 
@@ -183,6 +193,198 @@ function Show-AppInfo {
     Write-Host 'Las rutas candidatas no se borran automáticamente. Déjalas vacías en el formulario si no confirmas que sean propias de la app.' -ForegroundColor Gray
 }
 
+function Show-ManifestList {
+    param([array]$Apps)
+
+    Write-Host "`nLISTA WEB DE APPS" -ForegroundColor Cyan
+    if ($Apps.Count -eq 0) {
+        Write-Host 'Todavía no hay apps agregadas.' -ForegroundColor Yellow
+        return
+    }
+
+    for ($i = 0; $i -lt $Apps.Count; $i++) {
+        $app = $Apps[$i]
+        Write-Host ("  {0,2}. {1}" -f ($i + 1), $app.name) -ForegroundColor White
+        $details = @()
+        if ($app.wingetId) { $details += "WinGet: $($app.wingetId)" }
+        if (@($app.appxNames).Count -gt 0) { $details += "Appx: $(@($app.appxNames) -join ', ')" }
+        if (@($app.residualPaths).Count -gt 0) { $details += "Residuos: $(@($app.residualPaths).Count)" }
+        if ($details.Count -gt 0) { Write-Host ("      " + ($details -join '  |  ')) -ForegroundColor DarkGray }
+    }
+}
+
+function Select-ManifestApps {
+    param([array]$Apps)
+
+    if ($Apps.Count -eq 0) {
+        Write-Host 'No hay apps en la lista para seleccionar.' -ForegroundColor Yellow
+        return @()
+    }
+
+    Show-ManifestList -Apps $Apps
+    $choice = Read-Host 'Escribe números separados por coma (ej. 1,3) o A para todas; Enter cancela'
+    if ([string]::IsNullOrWhiteSpace($choice)) { return @() }
+    if ($choice.Trim() -match '^(?i:a|todas)$') { return @($Apps) }
+
+    $selected = @()
+    $seen = @{}
+    foreach ($part in ($choice -split '[,; ]+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
+        $index = 0
+        if (-not [int]::TryParse($part, [ref]$index) -or $index -lt 1 -or $index -gt $Apps.Count) {
+            Write-Host "Número inválido: $part. No se hizo ningún cambio." -ForegroundColor Red
+            return @()
+        }
+        if (-not $seen.ContainsKey($index)) {
+            $selected += $Apps[$index - 1]
+            $seen[$index] = $true
+        }
+    }
+    return @($selected)
+}
+
+function Get-InstalledAppCandidates {
+    $items = New-Object 'System.Collections.Generic.List[object]'
+    $seen = @{}
+    $uninstallLocations = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+
+    foreach ($location in $uninstallLocations) {
+        $entries = @(Get-ItemProperty -Path $location -ErrorAction SilentlyContinue)
+        foreach ($entry in $entries) {
+            $appName = [string]$entry.DisplayName
+            if ([string]::IsNullOrWhiteSpace($appName) -or $entry.SystemComponent -eq 1) { continue }
+            $appName = $appName.Trim()
+            $signature = ("program|{0}|{1}" -f $appName, $entry.PSChildName).ToLowerInvariant()
+            if ($seen.ContainsKey($signature)) { continue }
+            $seen[$signature] = $true
+            $items.Add([pscustomobject]@{
+                Name = $appName
+                Source = 'Programa instalado'
+                AppxName = ''
+            })
+        }
+    }
+
+    $appxCommand = Get-Command Get-AppxPackage -ErrorAction SilentlyContinue
+    if ($appxCommand) {
+        $packages = @(Get-AppxPackage -ErrorAction SilentlyContinue | Where-Object {
+            -not [bool]$_.IsFramework -and -not [bool]$_.IsResourcePackage
+        })
+        foreach ($package in $packages) {
+            $appxName = [string]$package.Name
+            if ([string]::IsNullOrWhiteSpace($appxName)) { continue }
+            $signature = ("appx|{0}" -f $appxName).ToLowerInvariant()
+            if ($seen.ContainsKey($signature)) { continue }
+            $seen[$signature] = $true
+            $items.Add([pscustomobject]@{
+                Name = $appxName
+                Source = 'Paquete Appx'
+                AppxName = $appxName
+            })
+        }
+    }
+
+    return $items.ToArray()
+}
+
+function Request-InstalledApp {
+    $installedApps = @(Get-InstalledAppCandidates | Sort-Object Name, Source)
+    if ($installedApps.Count -eq 0) {
+        Write-Host 'No encontré apps instaladas para seleccionar.' -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "`nAPPS INSTALADAS DE ESTE USUARIO" -ForegroundColor Cyan
+    for ($i = 0; $i -lt $installedApps.Count; $i++) {
+        Write-Host ("  {0,3}. {1}  [{2}]" -f ($i + 1), $installedApps[$i].Name, $installedApps[$i].Source) -ForegroundColor Gray
+    }
+
+    $choice = Read-Host 'Escribe el número de la app para solicitar que la agreguen; Enter cancela'
+    if ([string]::IsNullOrWhiteSpace($choice)) { return }
+    $index = 0
+    if (-not [int]::TryParse($choice, [ref]$index) -or $index -lt 1 -or $index -gt $installedApps.Count) {
+        Write-Host 'Número inválido. No se abrió ninguna solicitud.' -ForegroundColor Red
+        return
+    }
+
+    $app = $installedApps[$index - 1]
+    Write-Host "`nApp seleccionada: $($app.Name)" -ForegroundColor White
+    if ($app.AppxName) { Write-Host "Nombre Appx para el formulario: $($app.AppxName)" -ForegroundColor Gray }
+    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+    if ($winget) {
+        Write-Host "`nCOINCIDENCIAS DE WINGET  //  REVISA LA COLUMNA Id" -ForegroundColor Cyan
+        & winget.exe search --query $app.Name --source winget --accept-source-agreements
+    }
+    Write-Host 'En el formulario, copia el Id exacto de WinGet o el nombre Appx mostrado arriba.' -ForegroundColor Gray
+    $confirmation = Read-Host 'Escribe SOLICITAR para abrir el formulario de GitHub'
+    if (-not [string]::Equals($confirmation, 'SOLICITAR', [System.StringComparison]::Ordinal)) {
+        Write-Host 'Solicitud cancelada.' -ForegroundColor Yellow
+        return
+    }
+
+    $settings = Get-RepositorySettings
+    $title = [uri]::EscapeDataString("Solicitar agregar: $($app.Name)")
+    $template = [uri]::EscapeDataString('agregar-app.yml')
+    $requestUrl = "https://github.com/$($settings.Repository)/issues/new?template=$template&title=$title"
+    Start-Process -FilePath $requestUrl
+    Write-Host 'Se abrió el formulario. Completa el nombre y el ID de WinGet o nombre Appx, inicia sesión y pulsa Submit new issue.' -ForegroundColor Cyan
+}
+
+function Invoke-SelectedApps {
+    param(
+        [array]$Selected,
+        [switch]$BatchAll
+    )
+
+    if ($Selected.Count -eq 0) { return }
+
+    Write-Host "`nRESUMEN DE ELIMINACIÓN" -ForegroundColor Cyan
+    Write-Host ("Se procesarán {0} app(s):" -f $Selected.Count) -ForegroundColor White
+    foreach ($app in $Selected) {
+        Write-Host "  • $($app.name)" -ForegroundColor Gray
+        if ($app.wingetId) { Write-Host "      WinGet: $($app.wingetId)" -ForegroundColor DarkGray }
+        foreach ($packageName in @($app.appxNames)) { Write-Host "      Appx: $packageName" -ForegroundColor DarkGray }
+        foreach ($residue in @($app.residualPaths)) {
+            if ($null -ne $residue) { Write-Host "      Residuo: $($residue.root)/$($residue.path)" -ForegroundColor DarkGray }
+        }
+    }
+
+    if ($WhatIfPreference) {
+        Write-Host "`nVista previa: no se desinstaló ni borró nada." -ForegroundColor Yellow
+        return
+    }
+
+    $expected = if ($BatchAll) { 'BORRAR TODO' } else { 'BORRAR SELECCION' }
+    Write-Host "`nSolo se borrarán las rutas de residuos permitidas que aparecen arriba." -ForegroundColor Yellow
+    $confirmation = Read-Host "Escribe $expected para continuar (cualquier otra respuesta cancela)"
+    if (-not [string]::Equals($confirmation, $expected, [System.StringComparison]::Ordinal)) {
+        Write-Host 'Operación cancelada. No se hicieron cambios.' -ForegroundColor Yellow
+        return
+    }
+
+    $completed = @()
+    $withWarnings = @()
+    $failed = @()
+    foreach ($app in $Selected) {
+        try {
+            $result = Invoke-AppRemoval -App $app
+            $completed += [string]$app.name
+            if (@($result.Warnings).Count -gt 0) { $withWarnings += [string]$app.name }
+        }
+        catch {
+            Write-Host "Error en '$($app.name)': $($_.Exception.Message)" -ForegroundColor Red
+            $failed += [string]$app.name
+        }
+    }
+
+    Write-Host "`nRESULTADO" -ForegroundColor Cyan
+    Write-Host ("Procesadas: {0}  |  Con advertencias: {1}  |  Con error: {2}" -f $completed.Count, $withWarnings.Count, $failed.Count)
+    if ($failed.Count -gt 0) { Write-Host ("Revisa estas apps: {0}" -f ($failed -join ', ')) -ForegroundColor Red }
+}
+
 function Invoke-AppRemoval {
     param($App)
 
@@ -241,69 +443,55 @@ try {
         return
     }
 
+    if ($RequestInstalled) {
+        Request-InstalledApp
+        return
+    }
+
     $uri = Get-ListUrl -Override $ListUrl
     Write-Host "Leyendo lista web: $uri" -ForegroundColor DarkCyan
     $apps = @(Get-Manifest -Url $uri)
-    if ($apps.Count -eq 0) {
-        Write-Host 'La lista aun no contiene apps. Abre la pagina del proyecto y agrega una.' -ForegroundColor Yellow
+
+    if ($ListOnly) {
+        Show-ManifestList -Apps $apps
         return
     }
-
-    $batchAll = [string]::IsNullOrWhiteSpace($Name)
-    if ($batchAll) {
-        $selected = @($apps)
-    }
-    else {
+    if ($Name) {
         $selected = @($apps | Where-Object { $_.name -ieq $Name })
-        if ($selected.Count -ne 1) {
-            throw "No encontre exactamente una app llamada '$Name' en la lista web."
-        }
+        if ($selected.Count -ne 1) { throw "No encontré exactamente una app llamada '$Name' en la lista web." }
+        Invoke-SelectedApps -Selected $selected
+        return
     }
-
-    Write-Host "`nRESUMEN DE ELIMINACIÓN" -ForegroundColor Cyan
-    Write-Host ("Se procesarán {0} app(s) de la lista:" -f $selected.Count) -ForegroundColor White
-    foreach ($app in $selected) {
-        Write-Host "  • $($app.name)" -ForegroundColor Gray
-        if ($app.wingetId) { Write-Host "      WinGet: $($app.wingetId)" -ForegroundColor DarkGray }
-        foreach ($packageName in @($app.appxNames)) { Write-Host "      Appx: $packageName" -ForegroundColor DarkGray }
-        foreach ($residue in @($app.residualPaths)) {
-            if ($null -ne $residue) { Write-Host "      Residuo: $($residue.root)/$($residue.path)" -ForegroundColor DarkGray }
-        }
-    }
-
-    if ($WhatIfPreference) {
-        Write-Host "`nVista previa: no se desinstaló ni borró nada." -ForegroundColor Yellow
+    if ($All) {
+        if ($apps.Count -eq 0) { Write-Host 'No hay apps en la lista web.' -ForegroundColor Yellow; return }
+        Invoke-SelectedApps -Selected $apps -BatchAll
         return
     }
 
-    $expected = if ($batchAll) { 'BORRAR TODO' } else { 'BORRAR' }
-    Write-Host "`nLa operación quitará las apps seleccionadas y borrará únicamente las rutas de residuos indicadas arriba." -ForegroundColor Yellow
-    $confirmation = Read-Host "Escribe $expected para continuar (cualquier otra respuesta cancela)"
-    if (-not [string]::Equals($confirmation, $expected, [System.StringComparison]::Ordinal)) {
-        Write-Host 'Operación cancelada. No se hicieron cambios.' -ForegroundColor Yellow
-        return
-    }
+    while ($true) {
+        Write-Host "`nMENÚ PRINCIPAL" -ForegroundColor Cyan
+        Write-Host '  1. Ver la lista web de apps'
+        Write-Host '  2. Desinstalar apps seleccionadas'
+        Write-Host '  3. Desinstalar todas las apps de la lista'
+        Write-Host '  4. Solicitar agregar una app instalada'
+        Write-Host '  0. Salir'
+        $choice = Read-Host 'Elige una opción'
 
-    $completed = @()
-    $withWarnings = @()
-    $failed = @()
-    foreach ($app in $selected) {
-        try {
-            $result = Invoke-AppRemoval -App $app
-            $completed += [string]$app.name
-            if (@($result.Warnings).Count -gt 0) {
-                $withWarnings += [string]$app.name
+        switch ($choice) {
+            '1' { Show-ManifestList -Apps $apps }
+            '2' {
+                $selected = @(Select-ManifestApps -Apps $apps)
+                if ($selected.Count -gt 0) { Invoke-SelectedApps -Selected $selected }
             }
-        }
-        catch {
-            Write-Host "Error en '$($app.name)': $($_.Exception.Message)" -ForegroundColor Red
-            $failed += [string]$app.name
+            '3' {
+                if ($apps.Count -eq 0) { Write-Host 'No hay apps en la lista web.' -ForegroundColor Yellow }
+                else { Invoke-SelectedApps -Selected $apps -BatchAll }
+            }
+            '4' { Request-InstalledApp }
+            '0' { return }
+            default { Write-Host 'Opción inválida.' -ForegroundColor Yellow }
         }
     }
-
-    Write-Host "`nRESULTADO" -ForegroundColor Cyan
-    Write-Host ("Procesadas: {0}  |  Con advertencias: {1}  |  Con error: {2}" -f $completed.Count, $withWarnings.Count, $failed.Count)
-    if ($failed.Count -gt 0) { Write-Host ("Revisa estas apps: {0}" -f ($failed -join ', ')) -ForegroundColor Red }
 }
 catch {
     throw $_
