@@ -47,6 +47,10 @@
     .login-row button { flex:0 0 auto; }
     .error { margin:13px 0 0; color:#ffc2c7; }
     .notice { margin:16px 0 4px; padding:13px 15px; border:1px solid rgba(119,200,255,.26); border-left:3px solid var(--cyan); border-radius:10px; background:rgba(15,54,99,.42); color:#c8ddf7; font-size:.92rem; }
+    .command-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .command-row code { flex:1 1 300px; padding:11px 13px; border:1px solid rgba(169,208,255,.24); border-radius:10px; background:rgba(1,9,25,.55); }
+    .command-row .button { min-height:40px; padding:8px 16px; }
+    #copy-status { min-height:22px; margin:8px 0 0; color:#bdefff; font-size:.86rem; }
     #status { min-height:24px; color:#b7cbe4; }
     ul { margin:0; padding:0; list-style:none; }
     li { padding:15px 4px; border-top:1px solid rgba(168,205,245,.2); }
@@ -86,6 +90,13 @@
       <p>Consulta las apps que el script puede desinstalar y sus residuos especificados.</p>
       <a class="button" id="add-app" href="#">Añadir una app</a>
       <div class="notice">El formulario se abre en GitHub. Para mantener la lista segura, solo las personas propietarias o colaboradoras del repositorio pueden añadir apps.</div>
+      <h2>Ejecutar el lote en PowerShell</h2>
+      <p>El comando procesa todas las apps de esta lista y pide escribir <code>BORRAR TODO</code> antes de hacer cambios.</p>
+      <div class="command-row">
+        <code id="run-command">irm https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1 | iex</code>
+        <button class="button" id="copy-command" type="button">Copiar comando</button>
+      </div>
+      <p id="copy-status" role="status" aria-live="polite"></p>
       <h2>Apps en la lista</h2>
       <div id="status" role="status" aria-live="polite">Cargando lista…</div>
       <ul id="apps" aria-label="Apps disponibles"></ul>
@@ -134,6 +145,16 @@
     const form = document.querySelector('#login-form');
     const passwordInput = document.querySelector('#password');
     const loginError = document.querySelector('#login-error');
+    const copyStatus = document.querySelector('#copy-status');
+
+    document.querySelector('#copy-command').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(document.querySelector('#run-command').textContent);
+        copyStatus.textContent = 'Comando copiado. Pégalo en PowerShell para iniciar.';
+      } catch {
+        copyStatus.textContent = 'No se pudo copiar automáticamente. Selecciona y copia el comando.';
+      }
+    });
 
     function unlock() {
       login.hidden = true;
