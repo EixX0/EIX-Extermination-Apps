@@ -50,6 +50,7 @@
     .command-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .command-row code { flex:1 1 300px; padding:11px 13px; border:1px solid rgba(169,208,255,.24); border-radius:10px; background:rgba(1,9,25,.55); }
     .command-row .button { min-height:40px; padding:8px 16px; }
+    .menu-preview { margin:14px 0 8px; padding:14px 16px; overflow-x:auto; border:1px solid rgba(169,208,255,.24); border-radius:12px; background:rgba(1,9,25,.58); color:#d7edff; font: .88rem/1.65 Consolas,"Cascadia Code",monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
     #copy-status { min-height:22px; margin:8px 0 0; color:#bdefff; font-size:.86rem; }
     #status { min-height:24px; color:#b7cbe4; }
     ul { margin:0; padding:0; list-style:none; }
@@ -92,6 +93,10 @@
       <div class="notice">El formulario se abre en GitHub. Para mantener la lista segura, solo las personas propietarias o colaboradoras del repositorio pueden añadir apps.</div>
       <h2>Menú del script en PowerShell</h2>
       <p>Elige entre desinstalar todas las apps de la lista o ver las instaladas en tu equipo y solicitar que agreguen una. Antes de borrar, el script muestra el resumen y pide confirmación.</p>
+      <pre class="menu-preview" aria-label="Vista previa del menú principal">MENÚ PRINCIPAL
+  1. Desinstalar todas las apps de la lista
+  2. Ver apps instaladas en el equipo y solicitar agregar a la lista
+  0. Salir</pre>
       <div class="command-row">
         <code id="run-command">irm https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1 | iex</code>
         <button class="button" id="copy-command" type="button">Copiar comando</button>
