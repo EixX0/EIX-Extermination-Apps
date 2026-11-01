@@ -23,10 +23,10 @@ El repositorio es público para que el script y la página lean `apps.json`. El 
 
 1. Abre la página web publicada y pulsa **Añadir una app**; en GitHub, elige la plantilla **Agregar una app**.
 2. Completa el nombre y el ID exacto de WinGet, el nombre Appx, o ambos.
-3. Opcionalmente, indica rutas de residuos específicas como `LocalAppData/Empresa/Aplicacion`. Las raíces permitidas son `LocalAppData`, `RoamingAppData`, `ProgramData`, `ProgramFiles` y `ProgramFilesX86`.
+3. Opcionalmente, indica la carpeta exacta del programa como `ProgramFiles/Empresa/Aplicacion`. Esa carpeta se borrará recursivamente; deja el campo vacío si no estás seguro. Las raíces permitidas son `LocalAppData`, `RoamingAppData`, `ProgramData`, `ProgramFiles` y `ProgramFilesX86`.
 4. Envía el formulario. Cuando GitHub termine la actualización, la solicitud se cierra y la app aparece en la lista.
 
-El formulario requiere iniciar sesión en GitHub con la cuenta propietaria o colaboradora del repositorio. El script de PowerShell también abre esta plantilla directamente y envía como sugerencias los campos que logró identificar. No hay que descargar ni editar archivos para añadir apps una vez publicado.
+El formulario requiere iniciar sesión en GitHub con la cuenta propietaria o colaboradora del repositorio. Pide el nombre, el ID de WinGet, el paquete Appx y una carpeta de instalación opcional. No hay casilla de confirmación para agregar reportes.
 
 La página pide la contraseña `recode` antes de mostrar la lista y el botón del formulario. Como el sitio es estático, es un bloqueo casual: la contraseña está en el archivo público de la página y `apps.json` también puede consultarse directamente. No lo uses para proteger información privada.
 
@@ -44,7 +44,7 @@ Ese comando descarga la versión actual del script desde el repositorio y abre u
 - **2. Ver apps instaladas en el equipo y solicitar agregar a la lista** muestra programas del Registro y paquetes Appx del usuario actual. Al elegir una y escribir `SOLICITAR`, el script muestra el título y la descripción exactos para el issue; intenta copiar la descripción al portapapeles y abre GitHub.
 - **0. Salir** cierra el menú.
 
-Pega la descripción copiada en **Description** y verifica el título mostrado por el script. La casilla de confirmación aparece sin marcar: cambia `[ ]` por `[x]` solo después de verificar los identificadores y las rutas. Si no se encontró un ID exacto de WinGet y la app tampoco tiene paquete Appx, completa un identificador válido antes de enviar. Después de cada opción del menú, pulsa Enter para limpiar la consola y volver al menú. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
+Pega la descripción copiada en **Description** y verifica el título mostrado por el script. Si no se encontró un ID exacto de WinGet y la app tampoco tiene paquete Appx, completa un identificador válido antes de enviar. Después de cada opción del menú, la consola y su scrollback de Windows Terminal se limpian automáticamente. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
 
 Si se creó un issue en blanco por error, edítalo mientras siga abierto y reemplaza su descripción por los campos de la plantilla. El flujo vuelve a revisar issues abiertos cuando se editan.
 
@@ -75,7 +75,7 @@ Para desinstalar una sola app de la lista por nombre:
 .\Remove-Apps.ps1 -Name "Nombre de la app"
 ```
 
-## Buscar IDs y posibles residuos
+## Buscar IDs y carpeta de instalación
 
 Antes de llenar el formulario, el mismo script puede mostrar coincidencias de WinGet, nombres de paquetes Appx instalados para tu usuario y carpetas candidatas en las ubicaciones habituales:
 
@@ -83,7 +83,7 @@ Antes de llenar el formulario, el mismo script puede mostrar coincidencias de Wi
 .\Remove-Apps.ps1 -Info -Name "Discord"
 ```
 
-Si omites `-Name`, el script te preguntará qué app buscar. En las coincidencias de WinGet, copia el valor de la columna `Id`. Para Appx, copia `Name`, no `PackageFullName`. La búsqueda de carpetas candidatas revisa solo las carpetas directas de las ubicaciones habituales; verifica que pertenezcan a la app. Este modo solo consulta información: no desinstala ni borra nada. Deja las rutas de residuos vacías si no estás seguro.
+Si omites `-Name`, el script te preguntará qué app buscar. En las coincidencias de WinGet, copia el valor de la columna `Id`. Para Appx, copia `Name`, no `PackageFullName`. La búsqueda de carpetas candidatas revisa las carpetas de instalación habituales; verifica que sea la carpeta del programa antes de usarla. Este modo solo consulta información: no desinstala ni borra nada. Deja el campo de carpeta vacío si no estás seguro.
 
 Si Windows bloquea la ejecución del archivo, abre PowerShell en la carpeta y usa `Unblock-File .\Remove-Apps.ps1`. El script no cambia la directiva de ejecución del equipo.
 
@@ -91,8 +91,8 @@ Si Windows bloquea la ejecución del archivo, abre PowerShell en la carpeta y us
 
 - WinGet ejecuta la desinstalación por ID exacto. Se utiliza el modo silencioso y sin selección ambigua.
 - Los paquetes Appx se quitan solo para el usuario que ejecuta el script.
-- Las rutas de residuos deben estar listadas de forma explícita para cada app. Se rechazan rutas absolutas, comodines, `.` y `..`. Solo se borran esas rutas permitidas; no se buscan ni eliminan residuos desconocidos automáticamente.
-- No borra claves del Registro, archivos fuera de esas rutas ni paquetes Appx de otras cuentas de Windows.
+- La carpeta del programa es opcional y debe estar listada explícitamente. Se rechazan rutas absolutas, comodines, `.` y `..`. Solo se elimina esa carpeta específica; no se buscan carpetas automáticamente.
+- No borra claves del Registro ni paquetes Appx de otras cuentas de Windows.
 
-Una ruta de residuos equivocada puede borrar archivos de esa ruta. Añade solo carpetas o archivos que identifiques como propios de la app.
+Una carpeta de instalación equivocada puede borrar todos sus archivos. Añade solo una ruta concreta que identifiques como carpeta del programa.
 
