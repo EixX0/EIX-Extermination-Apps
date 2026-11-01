@@ -6,8 +6,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$configPath = Join-Path $scriptRoot 'config.json'
+$scriptRoot = $PSScriptRoot
+$configPath = if (-not [string]::IsNullOrWhiteSpace($scriptRoot)) { Join-Path $scriptRoot 'config.json' } else { $null }
+$defaultRepository = 'EixX0/EIX-Extermination-Apps'
+$defaultBranch = 'main'
 
 function Get-ListUrl {
     param([string]$Override)
@@ -16,19 +18,23 @@ function Get-ListUrl {
         return $Override
     }
 
-    if (-not (Test-Path -LiteralPath $configPath)) {
-        throw "No encuentro config.json junto al script. Sigue los pasos de publicacion del README."
+    $repository = $defaultRepository
+    $branch = $defaultBranch
+    if (-not [string]::IsNullOrWhiteSpace($configPath) -and (Test-Path -LiteralPath $configPath)) {
+        $settings = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+        if (-not [string]::IsNullOrWhiteSpace([string]$settings.repository)) {
+            $repository = [string]$settings.repository
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$settings.branch)) {
+            $branch = [string]$settings.branch
+        }
     }
 
-    $settings = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
-    if ([string]::IsNullOrWhiteSpace([string]$settings.repository) -or $settings.repository -match 'TU_USUARIO|tu-lista-apps') {
-        throw "Configura repository en config.json con tu usuario y repositorio de GitHub."
+    if ($repository -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
+        throw "El repositorio configurado en config.json no tiene el formato usuario/repositorio."
     }
-
-    $branch = [string]$settings.branch
-    if ([string]::IsNullOrWhiteSpace($branch)) { $branch = 'main' }
     $encodedBranch = [uri]::EscapeDataString($branch)
-    return "https://raw.githubusercontent.com/$($settings.repository)/$encodedBranch/apps.json"
+    return "https://raw.githubusercontent.com/$repository/$encodedBranch/apps.json"
 }
 
 function Get-Manifest {
@@ -178,7 +184,6 @@ function Show-AppInfo {
 }
 
 function Invoke-AppRemoval {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param($App)
 
     Write-Host "`n$($App.name)" -ForegroundColor White
@@ -188,19 +193,19 @@ function Invoke-AppRemoval {
         if ($null -ne $residue) { Write-Host "  Residuo: $($residue.root)/$($residue.path)" }
     }
 
-    if (-not $PSCmdlet.ShouldProcess($App.name, 'Desinstalar y borrar solo los residuos indicados')) {
-        return
-    }
+    $warnings = @()
 
     if ($App.wingetId) {
         $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
         if (-not $winget) {
             Write-Warning "No encuentro WinGet. Se omitio la desinstalacion de '$($App.name)' por WinGet."
+            $warnings += 'No se pudo usar WinGet.'
         }
         else {
             & winget.exe uninstall --id ([string]$App.wingetId) --exact --silent --accept-source-agreements --disable-interactivity
             if ($LASTEXITCODE -ne 0) {
                 Write-Warning "WinGet devolvio el codigo $LASTEXITCODE para '$($App.name)'; continuare con Appx y residuos indicados."
+                $warnings += "WinGet devolvio el codigo $LASTEXITCODE."
             }
         }
     }
@@ -223,6 +228,7 @@ function Invoke-AppRemoval {
     }
 
     Write-Host "Proceso terminado para '$($App.name)'." -ForegroundColor Cyan
+    return [pscustomobject]@{ Warnings = @($warnings) }
 }
 
 try {
@@ -243,19 +249,9 @@ try {
         return
     }
 
-    if ([string]::IsNullOrWhiteSpace($Name)) {
-        Write-Host "`nAPLICACIONES DISPONIBLES" -ForegroundColor Cyan
-        for ($i = 0; $i -lt $apps.Count; $i++) {
-            Write-Host ("  {0}. {1}" -f ($i + 1), $apps[$i].name) -ForegroundColor Gray
-        }
-        Write-Host 'Escribe el numero de la app que quieres quitar (Enter para cancelar)' -ForegroundColor Cyan -NoNewline
-        $choice = Read-Host
-        if ([string]::IsNullOrWhiteSpace($choice)) { return }
-        $index = 0
-        if (-not [int]::TryParse($choice, [ref]$index) -or $index -lt 1 -or $index -gt $apps.Count) {
-            throw 'La seleccion no es valida.'
-        }
-        $selected = @($apps[$index - 1])
+    $batchAll = [string]::IsNullOrWhiteSpace($Name)
+    if ($batchAll) {
+        $selected = @($apps)
     }
     else {
         $selected = @($apps | Where-Object { $_.name -ieq $Name })
@@ -264,8 +260,52 @@ try {
         }
     }
 
-    foreach ($app in $selected) { Invoke-AppRemoval -App $app }
+    Write-Host "`nRESUMEN DE ELIMINACIÓN" -ForegroundColor Cyan
+    Write-Host ("Se procesarán {0} app(s) de la lista:" -f $selected.Count) -ForegroundColor White
+    foreach ($app in $selected) {
+        Write-Host "  • $($app.name)" -ForegroundColor Gray
+        if ($app.wingetId) { Write-Host "      WinGet: $($app.wingetId)" -ForegroundColor DarkGray }
+        foreach ($packageName in @($app.appxNames)) { Write-Host "      Appx: $packageName" -ForegroundColor DarkGray }
+        foreach ($residue in @($app.residualPaths)) {
+            if ($null -ne $residue) { Write-Host "      Residuo: $($residue.root)/$($residue.path)" -ForegroundColor DarkGray }
+        }
+    }
+
+    if ($WhatIfPreference) {
+        Write-Host "`nVista previa: no se desinstaló ni borró nada." -ForegroundColor Yellow
+        return
+    }
+
+    $expected = if ($batchAll) { 'BORRAR TODO' } else { 'BORRAR' }
+    Write-Host "`nLa operación quitará las apps seleccionadas y borrará únicamente las rutas de residuos indicadas arriba." -ForegroundColor Yellow
+    $confirmation = Read-Host "Escribe $expected para continuar (cualquier otra respuesta cancela)"
+    if (-not [string]::Equals($confirmation, $expected, [System.StringComparison]::Ordinal)) {
+        Write-Host 'Operación cancelada. No se hicieron cambios.' -ForegroundColor Yellow
+        return
+    }
+
+    $completed = @()
+    $withWarnings = @()
+    $failed = @()
+    foreach ($app in $selected) {
+        try {
+            $result = Invoke-AppRemoval -App $app
+            $completed += [string]$app.name
+            if (@($result.Warnings).Count -gt 0) {
+                $withWarnings += [string]$app.name
+            }
+        }
+        catch {
+            Write-Host "Error en '$($app.name)': $($_.Exception.Message)" -ForegroundColor Red
+            $failed += [string]$app.name
+        }
+    }
+
+    Write-Host "`nRESULTADO" -ForegroundColor Cyan
+    Write-Host ("Procesadas: {0}  |  Con advertencias: {1}  |  Con error: {2}" -f $completed.Count, $withWarnings.Count, $failed.Count)
+    if ($failed.Count -gt 0) { Write-Host ("Revisa estas apps: {0}" -f ($failed -join ', ')) -ForegroundColor Red }
 }
 catch {
     throw $_
 }
+
