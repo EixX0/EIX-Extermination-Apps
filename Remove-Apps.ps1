@@ -77,6 +77,14 @@ function Get-Manifest {
     return @($response.apps)
 }
 
+function Show-ToolHeader {
+    Write-Host ''
+    Write-Host 'EIX OS  //  HORIZON 02' -ForegroundColor Cyan
+    Write-Host 'APP CONTROL  ·  WINDOWS 11' -ForegroundColor DarkCyan
+    Write-Host 'BEYOND THE HORIZON' -ForegroundColor Gray
+    Write-Host ''
+}
+
 function Resolve-ResiduePath {
     param($Residue)
 
@@ -109,12 +117,12 @@ function Resolve-ResiduePath {
 function Show-AppInfo {
     param([string]$Query)
 
-    Write-Host "`nBuscando información para: $Query" -ForegroundColor Cyan
+    Write-Host "`nIDENTIFICACIÓN DE APLICACIÓN  //  $Query" -ForegroundColor Cyan
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
     if ($winget) {
-        Write-Host "`nCoincidencias en el catálogo de WinGet (copia el valor de la columna Id):" -ForegroundColor Yellow
+        Write-Host "`nCATÁLOGO WINGET  //  COPIA EL VALOR DE Id" -ForegroundColor Cyan
         & winget.exe search --query $Query --source winget --accept-source-agreements
-        Write-Host "`nCoincidencias instaladas que WinGet reconoce:" -ForegroundColor Yellow
+        Write-Host "`nAPLICACIONES INSTALADAS RECONOCIDAS POR WINGET" -ForegroundColor Cyan
         & winget.exe list --query $Query
     }
     else {
@@ -125,7 +133,7 @@ function Show-AppInfo {
         ([string]$_.Name).IndexOf($Query, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -or
         ([string]$_.PackageFullName).IndexOf($Query, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
     } | Select-Object Name, PackageFullName, Publisher)
-    Write-Host "`nPaquetes Appx de este usuario (copia Name; no PackageFullName):" -ForegroundColor Yellow
+    Write-Host "`nPAQUETES APPX DE ESTE USUARIO  //  COPIA Name" -ForegroundColor Cyan
     if ($appxPackages.Count -gt 0) {
         $appxPackages | Format-Table -AutoSize
     }
@@ -142,7 +150,7 @@ function Show-AppInfo {
         [pscustomobject]@{ Name = 'ProgramFilesX86'; Path = ${env:ProgramFiles(x86)} }
     )
     $candidateCount = 0
-    Write-Host "`nPosibles carpetas sobrantes (solo carpetas directas; verifica cada una):" -ForegroundColor Yellow
+    Write-Host "`nPOSIBLES RESIDUOS  //  CANDIDATOS PARA REVISAR" -ForegroundColor Cyan
     foreach ($root in $roots) {
         if ([string]::IsNullOrWhiteSpace([string]$root.Path) -or -not (Test-Path -LiteralPath $root.Path)) { continue }
         $folders = @(Get-ChildItem -LiteralPath $root.Path -Directory -ErrorAction SilentlyContinue | Where-Object {
@@ -166,14 +174,14 @@ function Show-AppInfo {
     if ($candidateCount -eq 0) {
         Write-Host 'No encontré carpetas candidatas con ese texto. La búsqueda no es exhaustiva.'
     }
-    Write-Host 'Las rutas candidatas no se borran automáticamente. Déjalas vacías en el formulario si no confirmas que sean propias de la app.'
+    Write-Host 'Las rutas candidatas no se borran automáticamente. Déjalas vacías en el formulario si no confirmas que sean propias de la app.' -ForegroundColor Gray
 }
 
 function Invoke-AppRemoval {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param($App)
 
-    Write-Host "`n$($App.name)" -ForegroundColor Cyan
+    Write-Host "`n$($App.name)" -ForegroundColor White
     if ($App.wingetId) { Write-Host "  WinGet: $($App.wingetId)" }
     foreach ($packageName in @($App.appxNames)) { Write-Host "  Appx: $packageName" }
     foreach ($residue in @($App.residualPaths)) {
@@ -214,10 +222,12 @@ function Invoke-AppRemoval {
         }
     }
 
-    Write-Host "Proceso terminado para '$($App.name)'."
+    Write-Host "Proceso terminado para '$($App.name)'." -ForegroundColor Cyan
 }
 
 try {
+    Show-ToolHeader
+
     if ($Info) {
         if ([string]::IsNullOrWhiteSpace($Name)) { $Name = Read-Host 'Nombre de la app que quieres buscar' }
         if ([string]::IsNullOrWhiteSpace($Name)) { return }
@@ -226,7 +236,7 @@ try {
     }
 
     $uri = Get-ListUrl -Override $ListUrl
-    Write-Host "Leyendo lista web: $uri"
+    Write-Host "Leyendo lista web: $uri" -ForegroundColor DarkCyan
     $apps = @(Get-Manifest -Url $uri)
     if ($apps.Count -eq 0) {
         Write-Host 'La lista aun no contiene apps. Abre la pagina del proyecto y agrega una.' -ForegroundColor Yellow
@@ -234,11 +244,12 @@ try {
     }
 
     if ([string]::IsNullOrWhiteSpace($Name)) {
-        Write-Host "`nApps disponibles:"
+        Write-Host "`nAPLICACIONES DISPONIBLES" -ForegroundColor Cyan
         for ($i = 0; $i -lt $apps.Count; $i++) {
-            Write-Host ("  {0}. {1}" -f ($i + 1), $apps[$i].name)
+            Write-Host ("  {0}. {1}" -f ($i + 1), $apps[$i].name) -ForegroundColor Gray
         }
-        $choice = Read-Host 'Escribe el numero de la app que quieres quitar (Enter para cancelar)'
+        Write-Host 'Escribe el numero de la app que quieres quitar (Enter para cancelar)' -ForegroundColor Cyan -NoNewline
+        $choice = Read-Host
         if ([string]::IsNullOrWhiteSpace($choice)) { return }
         $index = 0
         if (-not [int]::TryParse($choice, [ref]$index) -or $index -lt 1 -or $index -gt $apps.Count) {
