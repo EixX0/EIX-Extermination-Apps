@@ -50,6 +50,16 @@ También se puede elegir por nombre:
 .\Remove-Apps.ps1 -Name "Nombre de la app"
 ```
 
+## Buscar IDs y posibles residuos
+
+Antes de llenar el formulario, el mismo script puede mostrar coincidencias de WinGet, nombres de paquetes Appx instalados para tu usuario y carpetas candidatas en las ubicaciones habituales:
+
+```powershell
+.\Remove-Apps.ps1 -Info -Name "Discord"
+```
+
+Si omites `-Name`, el script te preguntará qué app buscar. En las coincidencias de WinGet, copia el valor de la columna `Id`. Para Appx, copia `Name`, no `PackageFullName`. La búsqueda de carpetas candidatas revisa solo las carpetas directas de las ubicaciones habituales; verifica que pertenezcan a la app. Este modo solo consulta información: no desinstala ni borra nada. Deja las rutas de residuos vacías si no estás seguro.
+
 Si Windows bloquea la ejecución del archivo, abre PowerShell en la carpeta y usa `Unblock-File .\Remove-Apps.ps1`. El script no cambia la directiva de ejecución del equipo.
 
 ## Qué elimina
