@@ -40,17 +40,15 @@ irm https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-A
 
 Ese comando descarga la versión actual del script desde el repositorio y abre un menú:
 
-- **1. Ver la lista web** muestra todas las apps y sus identificadores.
-- **2. Desinstalar apps seleccionadas** acepta números separados por coma. Escribe `BORRAR SELECCION` para confirmar.
-- **3. Desinstalar todas** procesa la lista completa. Escribe `BORRAR TODO` para confirmar.
-- **4. Solicitar agregar una app instalada** muestra apps del Registro de desinstalación y paquetes Appx del usuario actual. Al elegir una, abre el formulario de GitHub con el nombre en el título.
+- **1. Desinstalar todas las apps de la lista** muestra el resumen del lote y pide escribir `BORRAR TODO`.
+- **2. Ver apps instaladas en el equipo y solicitar agregar a la lista** muestra programas del Registro y paquetes Appx del usuario actual. Elige una para abrir su formulario de GitHub.
 - **0. Salir** cierra el menú.
 
 La solicitud no se envía hasta que revises y pulses **Submit new issue** en GitHub. Completa allí el ID exacto de WinGet o el nombre de paquete Appx. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
 
 Ejecuta el comando solo si confías en el repositorio, porque `irm | iex` ejecuta el contenido descargado. La lista actual está en `apps.json`; si está vacía, las opciones de desinstalación no harán cambios.
 
-Para ver la lista sin abrir el menú:
+Para ver la lista web sin abrir el menú:
 
 ```powershell
 .\Remove-Apps.ps1 -ListOnly
