@@ -2,7 +2,7 @@
 
 El paquete tiene cuatro partes:
 
-- `Remove-Apps.ps1`: consulta la lista por internet, procesa todas las apps en una sola ejecución y pide una confirmación global antes de actuar.
+- `Remove-Apps.ps1`: consulta la lista por internet y ofrece un menú para verla, elegir apps que desinstalar o solicitar agregar una app instalada.
 - `apps.json`: lista que se publica junto a la página web.
 - `index.html`: página para consultar la lista y abrir el formulario **Añadir una app**.
 - `.github/`: formulario web y automatización que incorpora la app a la lista.
@@ -32,38 +32,47 @@ La página pide la contraseña `recode` antes de mostrar la lista y el botón de
 
 ## Ejecutar en Windows
 
-### Ejecutar todo lo que aparece en la lista
+### Abrir el menú del script
 
 ```powershell
 irm https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1 | iex
 ```
 
-Ese comando descarga la versión actual del script desde el repositorio y la ejecuta. Antes de hacer cambios, muestra todas las apps y las rutas de residuos configuradas; escribe `BORRAR TODO` para confirmar el lote. Cualquier otra respuesta cancela. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
+Ese comando descarga la versión actual del script desde el repositorio y abre un menú:
 
-Ejecuta el comando solo si confías en el repositorio, porque `irm | iex` ejecuta el contenido descargado. La lista actual está en `apps.json` y todas sus entradas se procesan; si la lista está vacía, no se borra nada.
+- **1. Ver la lista web** muestra todas las apps y sus identificadores.
+- **2. Desinstalar apps seleccionadas** acepta números separados por coma. Escribe `BORRAR SELECCION` para confirmar.
+- **3. Desinstalar todas** procesa la lista completa. Escribe `BORRAR TODO` para confirmar.
+- **4. Solicitar agregar una app instalada** muestra apps del Registro de desinstalación y paquetes Appx del usuario actual. Al elegir una, abre el formulario de GitHub con el nombre en el título.
+- **0. Salir** cierra el menú.
 
-Para revisar primero qué haría el lote sin desinstalar ni borrar nada, usa el archivo local:
+La solicitud no se envía hasta que revises y pulses **Submit new issue** en GitHub. Completa allí el ID exacto de WinGet o el nombre de paquete Appx. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
+
+Ejecuta el comando solo si confías en el repositorio, porque `irm | iex` ejecuta el contenido descargado. La lista actual está en `apps.json`; si está vacía, las opciones de desinstalación no harán cambios.
+
+Para ver la lista sin abrir el menú:
 
 ```powershell
-.\Remove-Apps.ps1 -WhatIf
+.\Remove-Apps.ps1 -ListOnly
 ```
 
-También puedes ejecutar la versión remota en modo de vista previa:
+Para previsualizar el borrado de todas las apps sin desinstalar ni borrar nada:
 
 ```powershell
 $script = [scriptblock]::Create((irm 'https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1'))
-& $script -WhatIf
+& $script -All -WhatIf
 ```
 
-Para procesar una sola app por nombre (local o remoto):
+También puedes iniciar directamente la solicitud de una app instalada:
+
+```powershell
+.\Remove-Apps.ps1 -RequestInstalled
+```
+
+Para desinstalar una sola app de la lista por nombre:
 
 ```powershell
 .\Remove-Apps.ps1 -Name "Nombre de la app"
-```
-
-```powershell
-$script = [scriptblock]::Create((irm 'https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1'))
-& $script -Name "Nombre de la app"
 ```
 
 ## Buscar IDs y posibles residuos
