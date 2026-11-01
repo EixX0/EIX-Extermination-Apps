@@ -1,0 +1,52 @@
+name: Agregar una app
+description: Añade una app a la lista del desinstalador.
+title: "Agregar app"
+labels: ["app-submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        El script usará los identificadores indicados para desinstalar la app. Deja vacíos los campos que no correspondan. Las rutas de residuos deben ser carpetas o archivos concretos de esa app.
+  - type: input
+    id: app_name
+    attributes:
+      label: Nombre de la app
+      description: Nombre que aparecerá en la lista de Windows.
+      placeholder: EjemploApp
+    validations:
+      required: true
+  - type: input
+    id: winget_id
+    attributes:
+      label: ID de WinGet
+      description: Identificador exacto del paquete en WinGet, si está disponible.
+      placeholder: Editor.App
+    validations:
+      required: false
+  - type: textarea
+    id: appx_names
+    attributes:
+      label: Nombres de paquetes Appx
+      description: Opcional. Un nombre exacto por línea; se desinstalará solo para el usuario actual.
+      placeholder: |
+        Editor.App
+        Contoso.App
+    validations:
+      required: false
+  - type: textarea
+    id: residual_paths
+    attributes:
+      label: Rutas de residuos
+      description: Opcional. Una por línea con este formato: LocalAppData/Empresa/Aplicacion. Carpetas raíz y rutas con .. o comodines se rechazan.
+      placeholder: |
+        LocalAppData/Empresa/Aplicacion
+        RoamingAppData/Empresa/Aplicacion
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmación
+      options:
+        - label: Confirmo que estos identificadores y rutas corresponden a esta app.
+          required: true
