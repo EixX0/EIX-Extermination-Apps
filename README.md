@@ -44,7 +44,7 @@ Ese comando descarga la versión actual del script desde el repositorio y abre u
 - **2. Ver apps instaladas en el equipo y solicitar agregar a la lista** muestra programas del Registro y paquetes Appx del usuario actual. Si falta la carpeta o un identificador, pregunta si quieres continuar. Al escribir `SOLICITAR`, muestra el título y la descripción del issue, intenta copiar la descripción al portapapeles y abre GitHub.
 - **0. Salir** cierra el menú.
 
-Pega la descripción copiada en **Description** y verifica el título mostrado por el script. Cuando termines en GitHub, vuelve a PowerShell y escribe `LISTO`; entonces se limpiarán la consola y el scrollback de Windows Terminal y volverá el menú. Las demás opciones se limpian automáticamente después de una breve pausa. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
+Pega la descripción copiada en **Description** y verifica el título mostrado por el script. Cuando termines en GitHub, vuelve a PowerShell y escribe `LISTO`; esa pantalla espera tu confirmación antes de limpiarse. Las demás opciones muestran el resultado durante 6 segundos y luego limpian la consola y el scrollback de Windows Terminal. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
 
 Si se creó un issue en blanco por error, edítalo mientras siga abierto y reemplaza su descripción por los campos de la plantilla. El flujo vuelve a revisar issues abiertos cuando se editan.
 
