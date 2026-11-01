@@ -46,6 +46,8 @@ Ese comando descarga la versión actual del script desde el repositorio y abre u
 
 La solicitud no se envía hasta que elijas **Agregar una app**, revises los campos y pulses **Submit new issue** en GitHub. Completa allí el ID exacto de WinGet si aplica. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
 
+Si se creó un issue en blanco por error, edítalo mientras siga abierto y reemplaza su descripción por los campos de la plantilla. El flujo vuelve a revisar issues abiertos cuando se editan.
+
 Ejecuta el comando solo si confías en el repositorio, porque `irm | iex` ejecuta el contenido descargado. La lista actual está en `apps.json`; si está vacía, las opciones de desinstalación no harán cambios.
 
 Para ver la lista web sin abrir el menú:
