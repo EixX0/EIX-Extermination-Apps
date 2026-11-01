@@ -101,6 +101,12 @@ function Show-ToolHeader {
     Write-Host ''
 }
 
+function Wait-ForMenuReset {
+    [void](Read-Host "`nPresiona Enter para limpiar la consola y volver al menú")
+    Clear-Host
+    Show-ToolHeader
+}
+
 function Resolve-ResiduePath {
     param($Residue)
 
@@ -375,7 +381,7 @@ function Request-InstalledApp {
     if ($wingetId) { Write-Host "ID de WinGet detectado: $wingetId" -ForegroundColor Gray }
     elseif (-not $app.AppxName) { Write-Host 'No encontré una coincidencia exacta de WinGet; ese campo quedará vacío para que lo revises.' -ForegroundColor Yellow }
     if ($app.AppxName) { Write-Host "Nombre Appx: $($app.AppxName)" -ForegroundColor Gray }
-    Write-Host 'Los residuos no se adivinan y la casilla de confirmación queda para que la revises.' -ForegroundColor Gray
+    Write-Host 'Los residuos no se adivinan; el formulario los dejará vacíos para que los revises.' -ForegroundColor Gray
     $confirmation = Read-Host 'Escribe SOLICITAR para abrir el formulario de GitHub'
     if (-not [string]::Equals($confirmation, 'SOLICITAR', [System.StringComparison]::Ordinal)) {
         Write-Host 'Solicitud cancelada.' -ForegroundColor Yellow
@@ -383,20 +389,47 @@ function Request-InstalledApp {
     }
 
     $settings = Get-RepositorySettings
-    $title = [uri]::EscapeDataString("Solicitar agregar: $($app.Name)")
-    $appNameValue = [uri]::EscapeDataString([string]$app.Name)
-    $template = [uri]::EscapeDataString('agregar-app.yml')
-    $requestUrl = "https://github.com/$($settings.Repository)/issues/new?template=$template&title=$title&app_name=$appNameValue"
-    if ($wingetId) {
-        $wingetValue = [uri]::EscapeDataString($wingetId)
-        $requestUrl += "&winget_id=$wingetValue"
+    $titleText = "Solicitar agregar: $($app.Name)"
+    $appxValue = [string]$app.AppxName
+    $description = @"
+### Nombre de la app
+$($app.Name)
+
+### ID de WinGet
+$wingetId
+
+### Nombres de paquetes Appx
+$appxValue
+
+### Rutas de residuos
+
+### Confirmación
+- [ ] Confirmo que estos identificadores y rutas corresponden a esta app.
+"@
+    Write-Host "`nCOPIA ESTOS DATOS EN EL ISSUE DE GITHUB" -ForegroundColor Cyan
+    Write-Host "Título: $titleText" -ForegroundColor White
+    Write-Host "`nDescripción:" -ForegroundColor White
+    Write-Host $description -ForegroundColor Gray
+    $clipboardCopied = $false
+    try {
+        Set-Clipboard -Value $description -ErrorAction Stop
+        $clipboardCopied = $true
     }
-    if ($app.AppxName) {
-        $appxValue = [uri]::EscapeDataString([string]$app.AppxName)
-        $requestUrl += "&appx_names=$appxValue"
+    catch { }
+    if ($clipboardCopied) {
+        Write-Host 'La descripción ya se copió al portapapeles. Pégala en el campo Description de GitHub.' -ForegroundColor Green
     }
+    else {
+        Write-Host 'Copia manualmente la descripción de arriba y pégala en GitHub.' -ForegroundColor Yellow
+    }
+    Write-Host 'Revisa los identificadores y las rutas; cambia [ ] por [x] solo si confirmas los datos.' -ForegroundColor Yellow
+    if (-not $wingetId -and -not $appxValue) {
+        Write-Host 'Falta un ID de WinGet o un nombre Appx exacto; el issue no se agregará a la lista hasta completarlo.' -ForegroundColor Yellow
+    }
+    $title = [uri]::EscapeDataString($titleText)
+    $requestUrl = "https://github.com/$($settings.Repository)/issues/new?title=$title"
     Start-Process -FilePath $requestUrl
-    Write-Host 'Se abrió directamente el formulario "Agregar una app". Revisa los datos, completa lo que falte y pulsa Submit new issue.' -ForegroundColor Cyan
+    Write-Host 'Se abrió GitHub. Verifica el título; pega la descripción si hace falta y pulsa Submit new issue cuando esté lista.' -ForegroundColor Cyan
 }
 
 function Invoke-SelectedApps {
@@ -500,6 +533,7 @@ function Invoke-AppRemoval {
 }
 
 try {
+    Clear-Host
     Show-ToolHeader
 
     if ($Info) {
@@ -545,10 +579,17 @@ try {
             '1' {
                 if ($apps.Count -eq 0) { Write-Host 'No hay apps en la lista web.' -ForegroundColor Yellow }
                 else { Invoke-SelectedApps -Selected $apps -BatchAll }
+                Wait-ForMenuReset
             }
-            '2' { Request-InstalledApp }
-            '0' { return }
-            default { Write-Host 'Opción inválida.' -ForegroundColor Yellow }
+            '2' {
+                Request-InstalledApp
+                Wait-ForMenuReset
+            }
+            '0' { Clear-Host; return }
+            default {
+                Write-Host 'Opción inválida.' -ForegroundColor Yellow
+                Wait-ForMenuReset
+            }
         }
     }
 }
