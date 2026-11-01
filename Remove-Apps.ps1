@@ -109,7 +109,8 @@ function Clear-ConsoleScreen {
 }
 
 function Reset-MenuScreen {
-    Start-Sleep -Milliseconds 1500
+    Write-Host "`nEsta pantalla se limpiará en 6 segundos y volverá al menú." -ForegroundColor DarkGray
+    Start-Sleep -Seconds 6
     Clear-ConsoleScreen
     Show-ToolHeader
 }
@@ -482,8 +483,9 @@ $programFolderValue
     $requestUrl = "https://github.com/$($settings.Repository)/issues/new?title=$title"
     Start-Process -FilePath $requestUrl
     Write-Host 'Se abrió GitHub. Verifica el título; pega la descripción si hace falta y pulsa Submit new issue cuando esté lista.' -ForegroundColor Cyan
+    Write-Host 'Esta pantalla seguirá abierta hasta que confirmes que terminaste.' -ForegroundColor Yellow
     do {
-        $ready = (Read-Host 'Cuando termines de copiar y revisar el reporte en GitHub, vuelve aquí y escribe LISTO').Trim()
+        $ready = (Read-Host '¿Ya terminaste de pegar y revisar el reporte en GitHub? Escribe LISTO para confirmarlo').Trim()
         if (-not [string]::Equals($ready, 'LISTO', [System.StringComparison]::OrdinalIgnoreCase)) {
             Write-Host 'La consola se mantendrá abierta. Escribe LISTO cuando acabes en GitHub.' -ForegroundColor Yellow
         }
