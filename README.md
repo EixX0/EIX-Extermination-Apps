@@ -1,4 +1,4 @@
-# Desinstalador de apps para Windows 11
+# EIX OS · Horizon 02 — Desinstalador de apps para Windows 11
 
 El paquete tiene cuatro partes:
 
