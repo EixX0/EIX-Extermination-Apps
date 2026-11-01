@@ -3,41 +3,69 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f7fb">
+  <meta name="theme-color" content="#071329">
   <title>Lista de apps de Windows</title>
   <style>
-    :root { color-scheme: light; --ink:#162238; --muted:#627087; --line:#dce3ed; --blue:#2257c5; --surface:#fff; }
-    * { box-sizing: border-box; }
-    body { margin:0; background:#f5f7fb; color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
-    main { width:min(760px,calc(100% - 32px)); margin:54px auto; }
-    .card { background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:clamp(22px,5vw,42px); box-shadow:0 12px 36px #2538580d; }
-    h1 { margin:0 0 8px; font-size:clamp(1.7rem,5vw,2.3rem); letter-spacing:-.03em; }
-    h2 { margin:30px 0 10px; font-size:1.1rem; }
-    p { color:var(--muted); margin:0 0 18px; }
-    .button { display:inline-block; margin:4px 0 18px; padding:12px 18px; border-radius:10px; background:var(--blue); color:white; text-decoration:none; font-weight:650; }
-    .button:hover { background:#1646a8; }
-    .login-wrap { width:min(460px,calc(100% - 32px)); margin:12vh auto; }
-    .login-wrap label { display:block; margin:16px 0 6px; font-weight:600; }
-    .login-row { display:flex; gap:10px; }
-    .login-row input { min-width:0; flex:1; padding:12px; border:1px solid var(--line); border-radius:9px; font:inherit; }
-    .login-row button { padding:12px 18px; border:0; border-radius:9px; background:var(--blue); color:#fff; font:inherit; font-weight:650; cursor:pointer; }
-    .login-row button:hover { background:#1646a8; }
-    .error { color:#a32121; margin:12px 0 0; }
+    :root { color-scheme:dark; --ink:#f3f8ff; --muted:#a9bdd8; --line:rgba(174,207,255,.3); --cyan:#9eeaff; --silver:#eaf5ff; --glass:rgba(7,20,48,.76); }
+    * { box-sizing:border-box; }
     [hidden] { display:none !important; }
-    .notice { border-left:4px solid #e4a321; background:#fff8e8; border-radius:7px; padding:12px 14px; color:#594316; font-size:.94rem; }
-    #status { min-height:24px; color:var(--muted); }
+    body { min-height:100vh; margin:0; overflow-x:hidden; color:var(--ink); background:#030919; font:16px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif; }
+    body::before, body::after { position:fixed; inset:0; content:""; pointer-events:none; }
+    body::before { z-index:-3; background:
+      radial-gradient(ellipse at 77% 28%,rgba(55,137,238,.46),transparent 39%),
+      radial-gradient(ellipse at 37% 15%,rgba(31,95,186,.37),transparent 45%),
+      radial-gradient(ellipse at 5% 60%,rgba(20,76,160,.34),transparent 38%),
+      linear-gradient(180deg,#071329 0%,#08224c 54%,#06142f 77%,#020714 100%); }
+    body::after { z-index:-1; opacity:.46; background-image:
+      radial-gradient(1px 1px at 18px 32px,#e7f6ff 98%,transparent),
+      radial-gradient(1px 1px at 92px 118px,#a7d7ff 98%,transparent),
+      radial-gradient(1.5px 1.5px at 155px 55px,#fff 98%,transparent),
+      radial-gradient(1px 1px at 230px 164px,#a8d6ff 98%,transparent);
+      background-size:280px 210px; }
+    .horizon { position:fixed; z-index:-2; left:0; right:0; bottom:0; height:35vh; min-height:190px; pointer-events:none; background:
+      radial-gradient(ellipse at 59% 56%,rgba(255,211,166,.48),rgba(91,169,255,.18) 14%,transparent 48%),
+      linear-gradient(180deg,transparent 0%,rgba(17,74,143,.18) 38%,rgba(5,21,50,.8) 84%,#020714 100%); }
+    .horizon::before { content:""; position:absolute; top:56%; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(158,219,255,.3) 18%,rgba(255,222,185,.85) 58%,rgba(158,219,255,.35) 87%,transparent); box-shadow:0 0 20px 5px rgba(107,183,255,.25); }
+    main { position:relative; width:min(900px,calc(100% - 32px)); margin:8vh auto 42px; }
+    .login-wrap { position:relative; width:min(560px,calc(100% - 32px)); margin:12vh auto; }
+    .card { position:relative; overflow:hidden; padding:clamp(24px,5vw,48px); border:1px solid var(--line); border-radius:22px; background:linear-gradient(145deg,rgba(18,46,91,.72),var(--glass) 58%,rgba(4,13,32,.84)); box-shadow:0 24px 80px rgba(0,5,22,.52),inset 0 1px rgba(255,255,255,.12),0 0 38px rgba(66,151,255,.1); backdrop-filter:blur(22px); }
+    .card::before { position:absolute; inset:5px; border:1px solid rgba(205,229,255,.1); border-radius:17px; content:""; pointer-events:none; }
+    .brandline { display:flex; align-items:center; gap:13px; margin-bottom:24px; }
+    .brandmark { color:transparent; background:linear-gradient(180deg,#fff 2%,#c4e4ff 38%,#7199c8 55%,#f8fcff 73%,#a4c9ee); background-clip:text; -webkit-background-clip:text; font-size:1.45rem; font-weight:850; letter-spacing:.12em; text-shadow:0 0 20px rgba(147,205,255,.28); }
+    .eyebrow { color:var(--cyan); font-size:.73rem; font-weight:650; letter-spacing:.23em; text-transform:uppercase; }
+    h1 { margin:0 0 10px; color:transparent; background:linear-gradient(180deg,#fff 0%,#dceeff 36%,#90b7e4 56%,#f2f9ff 76%,#b6d4f5); background-clip:text; -webkit-background-clip:text; font-size:clamp(2rem,6vw,3.7rem); font-weight:780; letter-spacing:.035em; line-height:1.03; text-shadow:0 0 28px rgba(139,198,255,.24); text-transform:uppercase; }
+    .tagline { margin:0 0 24px; color:#d5e7fc; font-family:Georgia,serif; font-size:.86rem; font-style:italic; letter-spacing:.37em; text-transform:uppercase; }
+    h2 { margin:34px 0 12px; color:#deefff; font-size:1.05rem; font-weight:650; letter-spacing:.12em; text-transform:uppercase; }
+    p { margin:0 0 18px; color:var(--muted); }
+    .button,.login-row button { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:46px; padding:11px 20px; border:1px solid rgba(234,247,255,.6); border-radius:999px; background:linear-gradient(180deg,#f5fbff 0%,#c6e7ff 30%,#79b7ee 54%,#e9f6ff 76%,#a8d3f5 100%); box-shadow:0 7px 24px rgba(64,163,255,.28),inset 0 1px #fff; color:#082148; font:inherit; font-weight:750; text-decoration:none; text-shadow:0 1px rgba(255,255,255,.65); cursor:pointer; transition:transform .18s ease,filter .18s ease,box-shadow .18s ease; }
+    .button:hover,.login-row button:hover { transform:translateY(-1px); filter:brightness(1.08); box-shadow:0 10px 30px rgba(77,178,255,.4),inset 0 1px #fff; }
+    .login-wrap label { display:block; margin:20px 0 7px; color:#e7f3ff; font-size:.9rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase; }
+    .login-row { display:flex; gap:12px; }
+    .login-row input { min-width:0; flex:1; padding:12px 16px; border:1px solid rgba(169,208,255,.35); border-radius:12px; outline:none; background:rgba(1,9,25,.64); box-shadow:inset 0 2px 10px rgba(0,0,0,.25); color:#f5fbff; font:inherit; }
+    .login-row input:focus { border-color:var(--cyan); box-shadow:0 0 0 3px rgba(100,206,255,.14),inset 0 2px 10px rgba(0,0,0,.25); }
+    .button:focus-visible,.login-row button:focus-visible,.login-row input:focus-visible { outline:3px solid #9eeaff; outline-offset:3px; }
+    .login-row button { flex:0 0 auto; }
+    .error { margin:13px 0 0; color:#ffc2c7; }
+    .notice { margin:16px 0 4px; padding:13px 15px; border:1px solid rgba(119,200,255,.26); border-left:3px solid var(--cyan); border-radius:10px; background:rgba(15,54,99,.42); color:#c8ddf7; font-size:.92rem; }
+    #status { min-height:24px; color:#b7cbe4; }
     ul { margin:0; padding:0; list-style:none; }
-    li { padding:13px 0; border-top:1px solid var(--line); }
-    li strong { display:block; }
-    li small { color:var(--muted); }
-    code { color:#293e66; overflow-wrap:anywhere; }
-    footer { margin-top:20px; color:var(--muted); font-size:.88rem; }
+    li { padding:15px 4px; border-top:1px solid rgba(168,205,245,.2); }
+    li strong { display:block; color:#f4f9ff; font-size:1.02rem; }
+    li small { display:block; margin-top:4px; color:#9fb9d9; overflow-wrap:anywhere; }
+    code { color:#bdefff; overflow-wrap:anywhere; }
+    footer { margin-top:24px; padding-top:15px; border-top:1px solid rgba(168,205,245,.16); color:#9cafc9; font-size:.86rem; }
+    @media (max-width:560px) { .login-row { flex-direction:column; } .login-row button { width:100%; } .tagline { letter-spacing:.2em; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; transition:none !important; } }
   </style>
 </head>
 <body>
+  <div class="horizon" aria-hidden="true"></div>
   <div class="login-wrap" id="login">
     <section class="card" aria-labelledby="login-title">
-      <h1 id="login-title">Página protegida</h1>
+      <div class="brandline"><span class="brandmark">EIX OS</span><span class="eyebrow">HORIZON // 02</span></div>
+      <p class="eyebrow">CONTROL DE APLICACIONES · WINDOWS 11</p>
+      <h1 id="login-title">Acceso<br>protegido</h1>
+      <p class="tagline">Beyond the horizon</p>
       <p>Escribe la contraseña para consultar la lista de apps.</p>
       <form id="login-form">
         <label for="password">Contraseña</label>
@@ -51,7 +79,10 @@
   </div>
   <main id="app" hidden>
     <section class="card" aria-labelledby="title">
-      <h1 id="title">Lista de apps de Windows</h1>
+      <div class="brandline"><span class="brandmark">EIX OS</span><span class="eyebrow">HORIZON // 02</span></div>
+      <p class="eyebrow">CONTROL DE APLICACIONES · WINDOWS 11</p>
+      <h1 id="title">Extermination<br>Apps</h1>
+      <p class="tagline">Beyond the horizon</p>
       <p>Consulta las apps que el script puede desinstalar y sus residuos especificados.</p>
       <a class="button" id="add-app" href="#">Añadir una app</a>
       <div class="notice">El formulario se abre en GitHub. Para mantener la lista segura, solo las personas propietarias o colaboradoras del repositorio pueden añadir apps.</div>
