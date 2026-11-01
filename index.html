@@ -90,8 +90,8 @@
       <p>Consulta las apps que el script puede desinstalar y sus residuos especificados.</p>
       <a class="button" id="add-app" href="#">Añadir una app</a>
       <div class="notice">El formulario se abre en GitHub. Para mantener la lista segura, solo las personas propietarias o colaboradoras del repositorio pueden añadir apps.</div>
-      <h2>Ejecutar el lote en PowerShell</h2>
-      <p>El comando procesa todas las apps de esta lista y pide escribir <code>BORRAR TODO</code> antes de hacer cambios.</p>
+      <h2>Menú del script en PowerShell</h2>
+      <p>Elige ver la lista, desinstalar apps seleccionadas o todas, o solicitar que agreguen una app instalada. Antes de borrar, el script muestra el resumen y pide confirmación.</p>
       <div class="command-row">
         <code id="run-command">irm https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1 | iex</code>
         <button class="button" id="copy-command" type="button">Copiar comando</button>
@@ -100,7 +100,7 @@
       <h2>Apps en la lista</h2>
       <div id="status" role="status" aria-live="polite">Cargando lista…</div>
       <ul id="apps" aria-label="Apps disponibles"></ul>
-      <footer>El script pide confirmación antes de desinstalar. Solo borra las rutas específicas que aparecen junto a cada app.</footer>
+      <footer>Las solicitudes abren un formulario de GitHub que debes revisar y enviar. Para desinstalar, el script pide confirmación y solo borra las rutas de residuos específicas de la lista.</footer>
     </section>
   </main>
   <script>
