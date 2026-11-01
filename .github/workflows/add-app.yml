@@ -2,7 +2,7 @@ name: Agregar app a la lista
 
 on:
   issues:
-    types: [opened]
+    types: [opened, edited]
 
 permissions:
   contents: write
@@ -16,6 +16,7 @@ jobs:
   add-app:
     if: >-
       contains(fromJSON('["OWNER","COLLABORATOR","MEMBER"]'), github.event.issue.author_association)
+      && github.event.issue.state == 'open'
       && contains(github.event.issue.body, '### Nombre de la app')
     runs-on: ubuntu-latest
     steps:
@@ -30,3 +31,4 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: python3 .github/scripts/add_app.py
+
