@@ -1,7 +1,8 @@
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
 param(
     [string]$Name,
-    [string]$ListUrl
+    [string]$ListUrl,
+    [switch]$Info
 )
 
 $ErrorActionPreference = 'Stop'
@@ -105,6 +106,69 @@ function Resolve-ResiduePath {
     return $target
 }
 
+function Show-AppInfo {
+    param([string]$Query)
+
+    Write-Host "`nBuscando información para: $Query" -ForegroundColor Cyan
+    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+    if ($winget) {
+        Write-Host "`nCoincidencias en el catálogo de WinGet (copia el valor de la columna Id):" -ForegroundColor Yellow
+        & winget.exe search --query $Query --source winget --accept-source-agreements
+        Write-Host "`nCoincidencias instaladas que WinGet reconoce:" -ForegroundColor Yellow
+        & winget.exe list --query $Query
+    }
+    else {
+        Write-Warning 'No encuentro WinGet. Continúo buscando paquetes Appx.'
+    }
+
+    $appxPackages = @(Get-AppxPackage | Where-Object {
+        ([string]$_.Name).IndexOf($Query, [System.StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+        ([string]$_.PackageFullName).IndexOf($Query, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+    } | Select-Object Name, PackageFullName, Publisher)
+    Write-Host "`nPaquetes Appx de este usuario (copia Name; no PackageFullName):" -ForegroundColor Yellow
+    if ($appxPackages.Count -gt 0) {
+        $appxPackages | Format-Table -AutoSize
+    }
+    else {
+        Write-Host 'No encontré paquetes Appx con ese texto.'
+    }
+
+    $tokens = @($Query -split '[^A-Za-z0-9]+' | Where-Object { $_.Length -ge 3 } | Select-Object -Unique)
+    $roots = @(
+        [pscustomobject]@{ Name = 'LocalAppData'; Path = $env:LOCALAPPDATA },
+        [pscustomobject]@{ Name = 'RoamingAppData'; Path = $env:APPDATA },
+        [pscustomobject]@{ Name = 'ProgramData'; Path = $env:PROGRAMDATA },
+        [pscustomobject]@{ Name = 'ProgramFiles'; Path = $env:ProgramFiles },
+        [pscustomobject]@{ Name = 'ProgramFilesX86'; Path = ${env:ProgramFiles(x86)} }
+    )
+    $candidateCount = 0
+    Write-Host "`nPosibles carpetas sobrantes (solo carpetas directas; verifica cada una):" -ForegroundColor Yellow
+    foreach ($root in $roots) {
+        if ([string]::IsNullOrWhiteSpace([string]$root.Path) -or -not (Test-Path -LiteralPath $root.Path)) { continue }
+        $folders = @(Get-ChildItem -LiteralPath $root.Path -Directory -ErrorAction SilentlyContinue | Where-Object {
+            $folderName = $_.Name
+            $matchedToken = $false
+            foreach ($token in $tokens) {
+                if ($folderName.IndexOf($token, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                    $matchedToken = $true
+                    break
+                }
+            }
+            $matchedToken
+        } | Select-Object -First 20)
+
+        foreach ($folder in $folders) {
+            $relative = $folder.FullName.Substring($root.Path.TrimEnd('\').Length).TrimStart('\')
+            Write-Host ("  {0}/{1}" -f $root.Name, $relative.Replace('\', '/'))
+            $candidateCount++
+        }
+    }
+    if ($candidateCount -eq 0) {
+        Write-Host 'No encontré carpetas candidatas con ese texto. La búsqueda no es exhaustiva.'
+    }
+    Write-Host 'Las rutas candidatas no se borran automáticamente. Déjalas vacías en el formulario si no confirmas que sean propias de la app.'
+}
+
 function Invoke-AppRemoval {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param($App)
@@ -154,6 +218,13 @@ function Invoke-AppRemoval {
 }
 
 try {
+    if ($Info) {
+        if ([string]::IsNullOrWhiteSpace($Name)) { $Name = Read-Host 'Nombre de la app que quieres buscar' }
+        if ([string]::IsNullOrWhiteSpace($Name)) { return }
+        Show-AppInfo -Query $Name
+        return
+    }
+
     $uri = Get-ListUrl -Override $ListUrl
     Write-Host "Leyendo lista web: $uri"
     $apps = @(Get-Manifest -Url $uri)
