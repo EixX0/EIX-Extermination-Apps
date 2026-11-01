@@ -41,10 +41,10 @@ irm https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-A
 Ese comando descarga la versión actual del script desde el repositorio y abre un menú:
 
 - **1. Desinstalar todas las apps de la lista** muestra el resumen del lote y pide escribir `BORRAR TODO`.
-- **2. Ver apps instaladas en el equipo y solicitar agregar a la lista** muestra programas del Registro y paquetes Appx del usuario actual. Elige una para abrir el selector de plantillas de GitHub; el script prellena el nombre, el paquete Appx y un ID de WinGet solo si encuentra una coincidencia exacta y única.
+- **2. Ver apps instaladas en el equipo y solicitar agregar a la lista** muestra programas del Registro y paquetes Appx del usuario actual. Elige una para abrir directamente la plantilla de GitHub; el script prellena el nombre, el paquete Appx y un ID de WinGet solo si encuentra una coincidencia exacta y única.
 - **0. Salir** cierra el menú.
 
-La solicitud no se envía hasta que elijas **Agregar una app**, revises los campos y pulses **Submit new issue** en GitHub. Las rutas de residuos no se inventan y la casilla de confirmación queda sin marcar para que la revises. Si no se encontró un ID exacto de WinGet y la app tampoco tiene paquete Appx, completa un identificador válido antes de enviar. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
+La solicitud no se envía hasta que revises los campos prellenados y pulses **Submit new issue** en GitHub. Las rutas de residuos no se inventan y la casilla de confirmación queda sin marcar para que la revises. Si no se encontró un ID exacto de WinGet y la app tampoco tiene paquete Appx, completa un identificador válido antes de enviar. El flujo solo incorpora solicitudes de la persona propietaria o colaboradora del repositorio. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
 
 Si se creó un issue en blanco por error, edítalo mientras siga abierto y reemplaza su descripción por los campos de la plantilla. El flujo vuelve a revisar issues abiertos cuando se editan.
 
