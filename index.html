@@ -88,9 +88,9 @@
       <p class="eyebrow">CONTROL DE APLICACIONES · WINDOWS 11</p>
       <h1 id="title">RECODED WIN</h1>
       <p class="tagline">Secure the Core. Control the System</p>
-      <p>Consulta las apps que el script puede desinstalar y sus residuos especificados.</p>
+      <p>Consulta las apps que el script puede desinstalar y sus carpetas de instalación especificadas.</p>
       <a class="button" id="add-app" href="#">Añadir una app</a>
-      <div class="notice">El selector de plantillas se abre en GitHub. Elige “Agregar una app”; solo las personas propietarias o colaboradoras del repositorio pueden añadir apps.</div>
+      <div class="notice">El formulario de GitHub permite solicitar una app; solo las personas propietarias o colaboradoras del repositorio pueden añadir apps.</div>
       <h2>Menú del script en PowerShell</h2>
       <p>Elige entre desinstalar todas las apps de la lista o ver las instaladas en tu equipo y solicitar que agreguen una. Antes de borrar, el script muestra el resumen y pide confirmación.</p>
       <pre class="menu-preview" aria-label="Vista previa del menú principal">MENÚ PRINCIPAL
@@ -105,7 +105,7 @@
       <h2>Apps en la lista</h2>
       <div id="status" role="status" aria-live="polite">Cargando lista…</div>
       <ul id="apps" aria-label="Apps disponibles"></ul>
-      <footer>Las solicitudes abren un formulario de GitHub que debes revisar y enviar. Para desinstalar, el script pide confirmación y solo borra las rutas de residuos específicas de la lista.</footer>
+      <footer>Las solicitudes abren un formulario de GitHub que debes revisar y enviar. Para desinstalar, el script pide confirmación y solo borra las carpetas de programa indicadas en la lista.</footer>
     </section>
   </main>
   <script>
@@ -119,7 +119,7 @@
         if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || repository.includes('TU_USUARIO')) {
           throw new Error('Falta configurar el repositorio en config.json.');
         }
-        document.querySelector('#add-app').href = `https://github.com/${repository}/issues/new/choose`;
+        document.querySelector('#add-app').href = `https://github.com/${repository}/issues/new?template=agregar-app.yml`;
         const branch = String(settings.branch || 'main');
         const listUrl = `https://raw.githubusercontent.com/${repository}/${encodeURIComponent(branch)}/apps.json`;
         const response = await fetch(listUrl, { cache: 'no-store' });
@@ -135,7 +135,7 @@
           const parts = [];
           if (app.wingetId) parts.push(`WinGet: ${app.wingetId}`);
           if (app.appxNames?.length) parts.push(`Appx: ${app.appxNames.join(', ')}`);
-          if (app.residualPaths?.length) parts.push(`Residuos: ${app.residualPaths.map(x => `${x.root}/${x.path}`).join(', ')}`);
+          if (app.programFolder) parts.push(`Carpeta del programa: ${app.programFolder.root}/${app.programFolder.path}`);
           details.textContent = parts.join(' · ');
           item.append(title, details);
           list.append(item);
