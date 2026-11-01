@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        El script usará los identificadores indicados para desinstalar la app. Deja vacíos los campos que no correspondan. Las rutas de residuos deben ser carpetas o archivos concretos de esa app.
+        El script usará los identificadores indicados para desinstalar la app y, si se proporciona, borrará la carpeta de instalación indicada. La carpeta se borra completa y de forma permanente; deja el campo vacío si no conoces la ruta exacta.
   - type: input
     id: app_name
     attributes:
@@ -33,20 +33,12 @@ body:
         Contoso.App
     validations:
       required: false
-  - type: textarea
-    id: residual_paths
+  - type: input
+    id: program_folder
     attributes:
-      label: Rutas de residuos
-      description: Opcional. Una por línea con este formato: LocalAppData/Empresa/Aplicacion. Carpetas raíz y rutas con .. o comodines se rechazan.
-      placeholder: |
-        LocalAppData/Empresa/Aplicacion
-        RoamingAppData/Empresa/Aplicacion
+      label: Carpeta del programa
+      description: Opcional. Ruta exacta en formato Raiz/carpeta/programa; se eliminará recursivamente. Déjala vacía si no estás seguro.
+      placeholder: ProgramFiles/Empresa/Aplicacion
     validations:
       required: false
-  - type: checkboxes
-    id: confirmation
-    attributes:
-      label: Confirmación
-      options:
-        - label: Confirmo que estos identificadores y rutas corresponden a esta app.
-          required: true
+
