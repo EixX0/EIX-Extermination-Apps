@@ -31,7 +31,7 @@
     .card { position:relative; overflow:hidden; padding:clamp(24px,5vw,48px); border:1px solid var(--line); border-radius:22px; background:linear-gradient(145deg,rgba(18,46,91,.72),var(--glass) 58%,rgba(4,13,32,.84)); box-shadow:0 24px 80px rgba(0,5,22,.52),inset 0 1px rgba(255,255,255,.12),0 0 38px rgba(66,151,255,.1); backdrop-filter:blur(22px); }
     .card::before { position:absolute; inset:5px; border:1px solid rgba(205,229,255,.1); border-radius:17px; content:""; pointer-events:none; }
     .brandline { display:flex; align-items:center; gap:13px; margin-bottom:24px; }
-    .brandmark { color:transparent; background:linear-gradient(180deg,#fff 2%,#c4e4ff 38%,#7199c8 55%,#f8fcff 73%,#a4c9ee); background-clip:text; -webkit-background-clip:text; font-size:1.45rem; font-weight:850; letter-spacing:.12em; text-shadow:0 0 20px rgba(147,205,255,.28); }
+    .brandmark { color:transparent; background:linear-gradient(180deg,#fff 2%,#c4e4ff 38%,#7199c8 55%,#f8fcff 73%,#a4c9ee); background-clip:text; -webkit-background-clip:text; font-family:Georgia,serif; font-size:1.45rem; font-style:italic; font-weight:700; letter-spacing:.06em; text-shadow:0 0 20px rgba(147,205,255,.28); }
     .eyebrow { color:var(--cyan); font-size:.73rem; font-weight:650; letter-spacing:.23em; text-transform:uppercase; }
     h1 { margin:0 0 10px; color:transparent; background:linear-gradient(180deg,#fff 0%,#dceeff 36%,#90b7e4 56%,#f2f9ff 76%,#b6d4f5); background-clip:text; -webkit-background-clip:text; font-size:clamp(2rem,6vw,3.7rem); font-weight:780; letter-spacing:.035em; line-height:1.03; text-shadow:0 0 28px rgba(139,198,255,.24); text-transform:uppercase; }
     .tagline { margin:0 0 24px; color:#d5e7fc; font-family:Georgia,serif; font-size:.86rem; font-style:italic; letter-spacing:.37em; text-transform:uppercase; }
@@ -62,10 +62,10 @@
   <div class="horizon" aria-hidden="true"></div>
   <div class="login-wrap" id="login">
     <section class="card" aria-labelledby="login-title">
-      <div class="brandline"><span class="brandmark">EIX OS</span><span class="eyebrow">HORIZON // 02</span></div>
+      <div class="brandline"><span class="brandmark">By EIX</span><span class="eyebrow">HORIZON // 02</span></div>
       <p class="eyebrow">CONTROL DE APLICACIONES · WINDOWS 11</p>
       <h1 id="login-title">Acceso<br>protegido</h1>
-      <p class="tagline">Beyond the horizon</p>
+      <p class="tagline">Secure the Core. Control the System</p>
       <p>Escribe la contraseña para consultar la lista de apps.</p>
       <form id="login-form">
         <label for="password">Contraseña</label>
@@ -79,10 +79,10 @@
   </div>
   <main id="app" hidden>
     <section class="card" aria-labelledby="title">
-      <div class="brandline"><span class="brandmark">EIX OS</span><span class="eyebrow">HORIZON // 02</span></div>
+      <div class="brandline"><span class="brandmark">By EIX</span><span class="eyebrow">HORIZON // 02</span></div>
       <p class="eyebrow">CONTROL DE APLICACIONES · WINDOWS 11</p>
-      <h1 id="title">Extermination<br>Apps</h1>
-      <p class="tagline">Beyond the horizon</p>
+      <h1 id="title">RECODED WIN</h1>
+      <p class="tagline">Secure the Core. Control the System</p>
       <p>Consulta las apps que el script puede desinstalar y sus residuos especificados.</p>
       <a class="button" id="add-app" href="#">Añadir una app</a>
       <div class="notice">El formulario se abre en GitHub. Para mantener la lista segura, solo las personas propietarias o colaboradoras del repositorio pueden añadir apps.</div>
@@ -156,3 +156,4 @@
   </script>
 </body>
 </html>
+
