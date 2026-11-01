@@ -104,7 +104,7 @@ function Show-ToolHeader {
 function Clear-ConsoleScreen {
     Clear-Host
     if ($env:WT_SESSION) {
-        try { [Console]::Write("$([char]27)[3J") } catch { }
+        try { [Console]::Write("$([char]27)[2J$([char]27)[3J$([char]27)[H") } catch { }
     }
 }
 
@@ -112,7 +112,6 @@ function Reset-MenuScreen {
     Write-Host "`nEsta pantalla se limpiará en 6 segundos y volverá al menú." -ForegroundColor DarkGray
     Start-Sleep -Seconds 6
     Clear-ConsoleScreen
-    Show-ToolHeader
 }
 
 function Resolve-ProgramFolder {
@@ -589,9 +588,9 @@ function Invoke-AppRemoval {
 
 try {
     Clear-ConsoleScreen
-    Show-ToolHeader
 
     if ($Info) {
+        Show-ToolHeader
         if ([string]::IsNullOrWhiteSpace($Name)) { $Name = Read-Host 'Nombre de la app que quieres buscar' }
         if ([string]::IsNullOrWhiteSpace($Name)) { return }
         Show-AppInfo -Query $Name
@@ -599,6 +598,7 @@ try {
     }
 
     if ($RequestInstalled) {
+        Show-ToolHeader
         Request-InstalledApp
         return
     }
@@ -608,22 +608,30 @@ try {
     $apps = @(Get-Manifest -Url $uri)
 
     if ($ListOnly) {
+        Clear-ConsoleScreen
+        Show-ToolHeader
         Show-ManifestList -Apps $apps
         return
     }
     if ($Name) {
+        Clear-ConsoleScreen
+        Show-ToolHeader
         $selected = @($apps | Where-Object { $_.name -ieq $Name })
         if ($selected.Count -ne 1) { throw "No encontré exactamente una app llamada '$Name' en la lista web." }
         Invoke-SelectedApps -Selected $selected
         return
     }
     if ($All) {
+        Clear-ConsoleScreen
+        Show-ToolHeader
         if ($apps.Count -eq 0) { Write-Host 'No hay apps en la lista web.' -ForegroundColor Yellow; return }
         Invoke-SelectedApps -Selected $apps -BatchAll
         return
     }
 
+    Clear-ConsoleScreen
     while ($true) {
+        Show-ToolHeader
         Write-Host "`nMENÚ PRINCIPAL" -ForegroundColor Cyan
         Write-Host '  1. Desinstalar todas las apps de la lista'
         Write-Host '  2. Ver apps instaladas en el equipo y solicitar agregar a la lista'
