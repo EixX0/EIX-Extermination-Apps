@@ -270,6 +270,8 @@ function Get-InstalledAppCandidates {
 
     $appxCommand = Get-Command Get-AppxPackage -ErrorAction SilentlyContinue
     if ($appxCommand) {
+        $startAppsCommand = Get-Command Get-StartApps -ErrorAction SilentlyContinue
+        $startApps = if ($startAppsCommand) { @(Get-StartApps -ErrorAction SilentlyContinue) } else { @() }
         $packages = @(Get-AppxPackage -ErrorAction SilentlyContinue | Where-Object {
             -not [bool]$_.IsFramework -and -not [bool]$_.IsResourcePackage
         })
@@ -279,8 +281,28 @@ function Get-InstalledAppCandidates {
             $signature = ("appx|{0}" -f $appxName).ToLowerInvariant()
             if ($seen.ContainsKey($signature)) { continue }
             $seen[$signature] = $true
+            $displayName = $appxName
+            $familyName = [string]$package.PackageFamilyName
+            $startEntry = $startApps | Where-Object {
+                -not [string]::IsNullOrWhiteSpace($familyName) -and
+                ([string]$_.AppID).StartsWith($familyName + '!', [System.StringComparison]::OrdinalIgnoreCase)
+            } | Select-Object -First 1
+            if ($startEntry -and -not [string]::IsNullOrWhiteSpace([string]$startEntry.Name)) {
+                $displayName = [string]$startEntry.Name
+            }
+            else {
+                $manifestCommand = Get-Command Get-AppxPackageManifest -ErrorAction SilentlyContinue
+                if ($manifestCommand) {
+                    $manifest = Get-AppxPackageManifest -Package $package -ErrorAction SilentlyContinue
+                    $manifestName = [string]$manifest.Package.Properties.DisplayName
+                    if (-not [string]::IsNullOrWhiteSpace($manifestName) -and
+                        -not $manifestName.StartsWith('ms-resource:', [System.StringComparison]::OrdinalIgnoreCase)) {
+                        $displayName = $manifestName
+                    }
+                }
+            }
             $items.Add([pscustomobject]@{
-                Name = $appxName
+                Name = $displayName
                 Source = 'Paquete Appx'
                 AppxName = $appxName
             })
@@ -288,6 +310,38 @@ function Get-InstalledAppCandidates {
     }
 
     return $items.ToArray()
+}
+
+function Find-ExactWingetId {
+    param([string]$AppName)
+
+    if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
+        return [pscustomobject]@{ Id = ''; Output = @() }
+    }
+
+    $output = @()
+    try {
+        $output = @(& winget.exe search --name $AppName --source winget --count 20 --accept-source-agreements --disable-interactivity 2>$null)
+    }
+    catch {
+        return [pscustomobject]@{ Id = ''; Output = @() }
+    }
+
+    $candidateIds = @()
+    foreach ($line in $output) {
+        if ($line -match '^\s*(?<candidateName>.+?)\s{2,}(?<candidateId>[A-Za-z0-9][A-Za-z0-9._+{}-]*)\s{2,}\S') {
+            $candidateName = [string]$Matches.candidateName
+            $candidateId = [string]$Matches.candidateId
+            if ($candidateId -ieq 'Id') { continue }
+            if ([string]::Equals($candidateName.Trim(), $AppName.Trim(), [System.StringComparison]::OrdinalIgnoreCase)) {
+                $candidateIds += $candidateId
+            }
+        }
+    }
+
+    $uniqueIds = @($candidateIds | Sort-Object -Unique)
+    $id = if ($uniqueIds.Count -eq 1) { [string]$uniqueIds[0] } else { '' }
+    return [pscustomobject]@{ Id = $id; Output = @($output) }
 }
 
 function Request-InstalledApp {
@@ -311,14 +365,17 @@ function Request-InstalledApp {
     }
 
     $app = $installedApps[$index - 1]
-    Write-Host "`nApp seleccionada: $($app.Name)" -ForegroundColor White
-    if ($app.AppxName) { Write-Host "Nombre Appx para el formulario: $($app.AppxName)" -ForegroundColor Gray }
-    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if ($winget) {
-        Write-Host "`nCOINCIDENCIAS DE WINGET  //  REVISA LA COLUMNA Id" -ForegroundColor Cyan
-        & winget.exe search --query $app.Name --source winget --accept-source-agreements
+    $wingetLookup = Find-ExactWingetId -AppName $app.Name
+    $wingetId = [string]$wingetLookup.Id
+    Write-Host "App seleccionada: $($app.Name)" -ForegroundColor White
+    if (@($wingetLookup.Output).Count -gt 0) {
+        Write-Host "COINCIDENCIAS DE WINGET" -ForegroundColor Cyan
+        foreach ($line in $wingetLookup.Output) { Write-Host $line }
     }
-    Write-Host 'En el formulario, copia el Id exacto de WinGet o el nombre Appx mostrado arriba.' -ForegroundColor Gray
+    if ($wingetId) { Write-Host "ID de WinGet detectado: $wingetId" -ForegroundColor Gray }
+    elseif (-not $app.AppxName) { Write-Host 'No encontré una coincidencia exacta de WinGet; ese campo quedará vacío para que lo revises.' -ForegroundColor Yellow }
+    if ($app.AppxName) { Write-Host "Nombre Appx: $($app.AppxName)" -ForegroundColor Gray }
+    Write-Host 'Los residuos no se adivinan y la casilla de confirmación queda para que la revises.' -ForegroundColor Gray
     $confirmation = Read-Host 'Escribe SOLICITAR para abrir el formulario de GitHub'
     if (-not [string]::Equals($confirmation, 'SOLICITAR', [System.StringComparison]::Ordinal)) {
         Write-Host 'Solicitud cancelada.' -ForegroundColor Yellow
@@ -329,12 +386,16 @@ function Request-InstalledApp {
     $title = [uri]::EscapeDataString("Solicitar agregar: $($app.Name)")
     $appNameValue = [uri]::EscapeDataString([string]$app.Name)
     $requestUrl = "https://github.com/$($settings.Repository)/issues/new/choose?title=$title&app_name=$appNameValue"
+    if ($wingetId) {
+        $wingetValue = [uri]::EscapeDataString($wingetId)
+        $requestUrl += "&winget_id=$wingetValue"
+    }
     if ($app.AppxName) {
         $appxValue = [uri]::EscapeDataString([string]$app.AppxName)
         $requestUrl += "&appx_names=$appxValue"
     }
     Start-Process -FilePath $requestUrl
-    Write-Host 'Se abrió el selector de plantillas. Elige "Agregar una app", revisa los campos prellenados, completa el ID de WinGet si aplica e inicia sesión para pulsar Submit new issue.' -ForegroundColor Cyan
+    Write-Host 'Se abrió el selector de plantillas. Elige "Agregar una app", revisa los campos prellenados y pulsa Submit new issue. Completa el ID de WinGet si no se detectó automáticamente.' -ForegroundColor Cyan
 }
 
 function Invoke-SelectedApps {
