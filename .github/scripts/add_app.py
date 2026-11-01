@@ -62,15 +62,12 @@ def main():
     name = section("Nombre de la app")
     winget_id = section("ID de WinGet")
     appx_text = section("Nombres de paquetes Appx")
-    residues_text = section("Rutas de residuos")
-    confirmation = section("Confirmación")
+    program_folder_text = section("Carpeta del programa")
 
     if not name or len(name) > 100 or "\n" in name or "\r" in name:
         fail("Escribe un nombre de app válido (máximo 100 caracteres).")
     if not winget_id and not appx_text:
         fail("Indica al menos un ID de WinGet o un nombre Appx exacto.")
-    if not re.search(r"(?im)^\s*-\s*\[x\]\s*Confirmo que estos identificadores y rutas corresponden a esta app\.", confirmation):
-        fail("Marca la casilla de confirmación del formulario.")
     if winget_id and not ID_PATTERN.fullmatch(winget_id):
         fail("El ID de WinGet contiene caracteres no permitidos.")
 
@@ -83,22 +80,17 @@ def main():
             if value not in appx_names:
                 appx_names.append(value)
 
-    residual_paths = []
-    for value in residues_text.splitlines():
-        value = value.strip()
-        if not value or value == "_No response_":
-            continue
-        if value.count("/") < 1:
-            fail(f"Ruta no válida: {value}. Usa Raiz/carpeta/archivo.")
-        root, relative = value.split("/", 1)
+    program_folder = None
+    if program_folder_text:
+        if program_folder_text.count("/") < 1:
+            fail(f"Carpeta no válida: {program_folder_text}. Usa Raiz/carpeta/programa.")
+        root, relative = program_folder_text.split("/", 1)
         segments = relative.split("/")
         if root not in ALLOWED_ROOTS or any(part in {"", ".", ".."} for part in segments):
-            fail(f"Ruta no permitida: {value}")
+            fail(f"Carpeta no permitida: {program_folder_text}")
         if any(not re.fullmatch(r"[A-Za-z0-9 _().+-]+", part) for part in segments):
-            fail(f"Ruta contiene caracteres no permitidos: {value}")
-        item = {"root": root, "path": "/".join(segments)}
-        if item not in residual_paths:
-            residual_paths.append(item)
+            fail(f"La carpeta contiene caracteres no permitidos: {program_folder_text}")
+        program_folder = {"root": root, "path": "/".join(segments)}
 
     repo = api_request("GET", f"/repos/{REPOSITORY}")
     branch = repo["default_branch"]
@@ -120,8 +112,8 @@ def main():
         new_app["wingetId"] = winget_id
     if appx_names:
         new_app["appxNames"] = appx_names
-    if residual_paths:
-        new_app["residualPaths"] = residual_paths
+    if program_folder:
+        new_app["programFolder"] = program_folder
     apps.append(new_app)
     updated = (json.dumps(manifest, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
@@ -151,3 +143,4 @@ if __name__ == "__main__":
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", errors="replace")
         fail(f"GitHub rechazó la actualización (HTTP {error.code}): {detail[:500]}")
+
