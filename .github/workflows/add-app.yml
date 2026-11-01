@@ -1,0 +1,32 @@
+name: Agregar app a la lista
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: update-app-list
+  cancel-in-progress: false
+
+jobs:
+  add-app:
+    if: >-
+      contains(fromJSON('["OWNER","COLLABORATOR","MEMBER"]'), github.event.issue.author_association)
+      && contains(github.event.issue.body, '### Nombre de la app')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get repository files
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate the form and update apps.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: python3 .github/scripts/add_app.py
