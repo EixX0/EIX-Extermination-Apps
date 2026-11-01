@@ -385,7 +385,8 @@ function Request-InstalledApp {
     $settings = Get-RepositorySettings
     $title = [uri]::EscapeDataString("Solicitar agregar: $($app.Name)")
     $appNameValue = [uri]::EscapeDataString([string]$app.Name)
-    $requestUrl = "https://github.com/$($settings.Repository)/issues/new/choose?title=$title&app_name=$appNameValue"
+    $template = [uri]::EscapeDataString('agregar-app.yml')
+    $requestUrl = "https://github.com/$($settings.Repository)/issues/new?template=$template&title=$title&app_name=$appNameValue"
     if ($wingetId) {
         $wingetValue = [uri]::EscapeDataString($wingetId)
         $requestUrl += "&winget_id=$wingetValue"
@@ -395,7 +396,7 @@ function Request-InstalledApp {
         $requestUrl += "&appx_names=$appxValue"
     }
     Start-Process -FilePath $requestUrl
-    Write-Host 'Se abrió el selector de plantillas. Elige "Agregar una app", revisa los campos prellenados y pulsa Submit new issue. Completa el ID de WinGet si no se detectó automáticamente.' -ForegroundColor Cyan
+    Write-Host 'Se abrió directamente el formulario "Agregar una app". Revisa los datos, completa lo que falte y pulsa Submit new issue.' -ForegroundColor Cyan
 }
 
 function Invoke-SelectedApps {
