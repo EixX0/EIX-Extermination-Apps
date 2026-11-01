@@ -2,7 +2,7 @@
 
 El paquete tiene cuatro partes:
 
-- `Remove-Apps.ps1`: consulta la lista por internet, permite elegir una app y solicita confirmación antes de actuar.
+- `Remove-Apps.ps1`: consulta la lista por internet, procesa todas las apps en una sola ejecución y pide una confirmación global antes de actuar.
 - `apps.json`: lista que se publica junto a la página web.
 - `index.html`: página para consultar la lista y abrir el formulario **Añadir una app**.
 - `.github/`: formulario web y automatización que incorpora la app a la lista.
@@ -32,22 +32,38 @@ La página pide la contraseña `recode` antes de mostrar la lista y el botón de
 
 ## Ejecutar en Windows
 
-Deja `Remove-Apps.ps1` y `config.json` en la misma carpeta. Abre PowerShell en esa carpeta y ejecuta:
+### Ejecutar todo lo que aparece en la lista
 
 ```powershell
-.\Remove-Apps.ps1
+irm https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1 | iex
 ```
 
-Elige el número de una app y confirma cuando PowerShell lo solicite. Para revisar qué haría, sin desinstalar ni borrar nada:
+Ese comando descarga la versión actual del script desde el repositorio y la ejecuta. Antes de hacer cambios, muestra todas las apps y las rutas de residuos configuradas; escribe `BORRAR TODO` para confirmar el lote. Cualquier otra respuesta cancela. Puedes abrir PowerShell como administrador si Windows necesita permisos para quitar alguna app o carpeta.
+
+Ejecuta el comando solo si confías en el repositorio, porque `irm | iex` ejecuta el contenido descargado. La lista actual está en `apps.json` y todas sus entradas se procesan; si la lista está vacía, no se borra nada.
+
+Para revisar primero qué haría el lote sin desinstalar ni borrar nada, usa el archivo local:
 
 ```powershell
 .\Remove-Apps.ps1 -WhatIf
 ```
 
-También se puede elegir por nombre:
+También puedes ejecutar la versión remota en modo de vista previa:
+
+```powershell
+$script = [scriptblock]::Create((irm 'https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1'))
+& $script -WhatIf
+```
+
+Para procesar una sola app por nombre (local o remoto):
 
 ```powershell
 .\Remove-Apps.ps1 -Name "Nombre de la app"
+```
+
+```powershell
+$script = [scriptblock]::Create((irm 'https://raw.githubusercontent.com/EixX0/EIX-Extermination-Apps/main/Remove-Apps.ps1'))
+& $script -Name "Nombre de la app"
 ```
 
 ## Buscar IDs y posibles residuos
@@ -66,7 +82,8 @@ Si Windows bloquea la ejecución del archivo, abre PowerShell en la carpeta y us
 
 - WinGet ejecuta la desinstalación por ID exacto. Se utiliza el modo silencioso y sin selección ambigua.
 - Los paquetes Appx se quitan solo para el usuario que ejecuta el script.
-- Las rutas de residuos deben estar listadas de forma explícita para cada app. Se rechazan rutas absolutas, comodines, `.` y `..`.
+- Las rutas de residuos deben estar listadas de forma explícita para cada app. Se rechazan rutas absolutas, comodines, `.` y `..`. Solo se borran esas rutas permitidas; no se buscan ni eliminan residuos desconocidos automáticamente.
 - No borra claves del Registro, archivos fuera de esas rutas ni paquetes Appx de otras cuentas de Windows.
 
 Una ruta de residuos equivocada puede borrar archivos de esa ruta. Añade solo carpetas o archivos que identifiques como propios de la app.
+
