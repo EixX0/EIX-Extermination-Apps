@@ -74,15 +74,15 @@ function Get-Manifest {
                 throw "La app '$($app.name)' tiene un nombre Appx invalido."
             }
         }
-        foreach ($residue in @($app.residualPaths)) {
-            if ($null -eq $residue) { continue }
-            if ([string]$residue.root -notin @('LocalAppData','RoamingAppData','ProgramData','ProgramFiles','ProgramFilesX86')) {
-                throw "La app '$($app.name)' contiene una ruta de residuos no permitida."
+        if ($null -ne $app.programFolder) {
+            $programFolder = $app.programFolder
+            if ([string]$programFolder.root -notin @('LocalAppData','RoamingAppData','ProgramData','ProgramFiles','ProgramFilesX86')) {
+                throw "La app '$($app.name)' contiene una carpeta de programa no permitida."
             }
-            $parts = ([string]$residue.path -replace '\\', '/').Split('/')
+            $parts = ([string]$programFolder.path).Replace([string][char]92, '/').Split('/')
             $invalidParts = @($parts | Where-Object { $_ -notmatch '^[A-Za-z0-9 _().+-]+$' -or $_ -in @('.', '..') })
-            if ([string]::IsNullOrWhiteSpace([string]$residue.path) -or $invalidParts.Count -gt 0) {
-                throw "La app '$($app.name)' contiene una ruta de residuos insegura."
+            if ([string]::IsNullOrWhiteSpace([string]$programFolder.path) -or $invalidParts.Count -gt 0) {
+                throw "La app '$($app.name)' contiene una carpeta de programa insegura."
             }
         }
         if (-not $app.wingetId -and $appxNames.Count -eq 0) {
@@ -101,14 +101,21 @@ function Show-ToolHeader {
     Write-Host ''
 }
 
-function Wait-ForMenuReset {
-    [void](Read-Host "`nPresiona Enter para limpiar la consola y volver al menú")
+function Clear-ConsoleScreen {
     Clear-Host
+    if ($env:WT_SESSION) {
+        try { [Console]::Write("$([char]27)[3J") } catch { }
+    }
+}
+
+function Reset-MenuScreen {
+    Start-Sleep -Milliseconds 1500
+    Clear-ConsoleScreen
     Show-ToolHeader
 }
 
-function Resolve-ResiduePath {
-    param($Residue)
+function Resolve-ProgramFolder {
+    param($ProgramFolder)
 
     $roots = @{
         LocalAppData    = $env:LOCALAPPDATA
@@ -118,22 +125,51 @@ function Resolve-ResiduePath {
         ProgramFilesX86 = ${env:ProgramFiles(x86)}
     }
 
-    $base = [string]$roots[[string]$Residue.root]
+    $base = [string]$roots[[string]$ProgramFolder.root]
     if ([string]::IsNullOrWhiteSpace($base)) {
-        throw "Windows no tiene configurada la carpeta '$($Residue.root)'."
+        throw "Windows no tiene configurada la carpeta '$($ProgramFolder.root)'."
     }
 
-    $relative = ([string]$Residue.path).Replace('/', '\')
+    $relative = ([string]$ProgramFolder.path).Replace('/', '\')
     if ([System.IO.Path]::IsPathRooted($relative) -or $relative -match '(^|\\)\.\.?($|\\)') {
-        throw "La ruta de residuos '$($Residue.path)' no es relativa o contiene segmentos no permitidos."
+        throw "La carpeta de programa '$($ProgramFolder.path)' no es relativa o contiene segmentos no permitidos."
     }
 
     $baseFull = [System.IO.Path]::GetFullPath($base).TrimEnd('\')
     $target = [System.IO.Path]::GetFullPath((Join-Path $baseFull $relative))
     if (-not $target.StartsWith($baseFull + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "La ruta de residuos '$($Residue.path)' sale de su carpeta autorizada."
+        throw "La carpeta de programa '$($ProgramFolder.path)' sale de su ubicación autorizada."
     }
     return $target
+}
+
+function ConvertTo-ProgramFolderReference {
+    param([string]$InstallLocation)
+
+    if ([string]::IsNullOrWhiteSpace($InstallLocation)) { return '' }
+    try { $fullPath = [System.IO.Path]::GetFullPath($InstallLocation.Trim().Trim('"')).TrimEnd([char]92) }
+    catch { return '' }
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Container)) { return '' }
+
+    $roots = @(
+        [pscustomobject]@{ Name = 'LocalAppData'; Path = $env:LOCALAPPDATA },
+        [pscustomobject]@{ Name = 'RoamingAppData'; Path = $env:APPDATA },
+        [pscustomobject]@{ Name = 'ProgramData'; Path = $env:PROGRAMDATA },
+        [pscustomobject]@{ Name = 'ProgramFiles'; Path = $env:ProgramFiles },
+        [pscustomobject]@{ Name = 'ProgramFilesX86'; Path = ${env:ProgramFiles(x86)} }
+    )
+    foreach ($root in $roots) {
+        if ([string]::IsNullOrWhiteSpace([string]$root.Path)) { continue }
+        try { $base = [System.IO.Path]::GetFullPath([string]$root.Path).TrimEnd([char]92) }
+        catch { continue }
+        if (-not $fullPath.StartsWith($base + [char]92, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+        $relative = $fullPath.Substring($base.Length).TrimStart([char]92)
+        $parts = @($relative.Split([char]92))
+        $invalidParts = @($parts | Where-Object { $_ -notmatch '^[A-Za-z0-9 _().+-]+$' -or $_ -in @('.', '..') })
+        if ([string]::IsNullOrWhiteSpace($relative) -or $invalidParts.Count -gt 0) { return '' }
+        return "$($root.Name)/$($relative.Replace([char]92, [char]47))"
+    }
+    return ''
 }
 
 function Show-AppInfo {
@@ -164,18 +200,17 @@ function Show-AppInfo {
     }
 
     $tokens = @($Query -split '[^A-Za-z0-9]+' | Where-Object { $_.Length -ge 3 } | Select-Object -Unique)
+    $localPrograms = if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'Programs' } else { $null }
     $roots = @(
-        [pscustomobject]@{ Name = 'LocalAppData'; Path = $env:LOCALAPPDATA },
-        [pscustomobject]@{ Name = 'RoamingAppData'; Path = $env:APPDATA },
-        [pscustomobject]@{ Name = 'ProgramData'; Path = $env:PROGRAMDATA },
-        [pscustomobject]@{ Name = 'ProgramFiles'; Path = $env:ProgramFiles },
-        [pscustomobject]@{ Name = 'ProgramFilesX86'; Path = ${env:ProgramFiles(x86)} }
+        [pscustomobject]@{ Name = 'LocalAppData'; Path = $env:LOCALAPPDATA; SearchPath = $localPrograms },
+        [pscustomobject]@{ Name = 'ProgramFiles'; Path = $env:ProgramFiles; SearchPath = $env:ProgramFiles },
+        [pscustomobject]@{ Name = 'ProgramFilesX86'; Path = ${env:ProgramFiles(x86)}; SearchPath = ${env:ProgramFiles(x86)} }
     )
     $candidateCount = 0
-    Write-Host "`nPOSIBLES RESIDUOS  //  CANDIDATOS PARA REVISAR" -ForegroundColor Cyan
+    Write-Host "`nCARPETAS DE INSTALACIÓN  //  CANDIDATOS PARA REVISAR" -ForegroundColor Cyan
     foreach ($root in $roots) {
-        if ([string]::IsNullOrWhiteSpace([string]$root.Path) -or -not (Test-Path -LiteralPath $root.Path)) { continue }
-        $folders = @(Get-ChildItem -LiteralPath $root.Path -Directory -ErrorAction SilentlyContinue | Where-Object {
+        if ([string]::IsNullOrWhiteSpace([string]$root.SearchPath) -or -not (Test-Path -LiteralPath $root.SearchPath)) { continue }
+        $folders = @(Get-ChildItem -LiteralPath $root.SearchPath -Directory -ErrorAction SilentlyContinue | Where-Object {
             $folderName = $_.Name
             $matchedToken = $false
             foreach ($token in $tokens) {
@@ -194,9 +229,9 @@ function Show-AppInfo {
         }
     }
     if ($candidateCount -eq 0) {
-        Write-Host 'No encontré carpetas candidatas con ese texto. La búsqueda no es exhaustiva.'
+        Write-Host 'No encontré carpetas candidatas. Revisa la ruta de instalación en el Registro o deja este campo vacío.'
     }
-    Write-Host 'Las rutas candidatas no se borran automáticamente. Déjalas vacías en el formulario si no confirmas que sean propias de la app.' -ForegroundColor Gray
+    Write-Host 'Agrega solo una carpeta exacta de instalación. Al desinstalar, su contenido se borrará completo.' -ForegroundColor Yellow
 }
 
 function Show-ManifestList {
@@ -214,7 +249,7 @@ function Show-ManifestList {
         $details = @()
         if ($app.wingetId) { $details += "WinGet: $($app.wingetId)" }
         if (@($app.appxNames).Count -gt 0) { $details += "Appx: $(@($app.appxNames) -join ', ')" }
-        if (@($app.residualPaths).Count -gt 0) { $details += "Residuos: $(@($app.residualPaths).Count)" }
+        if ($app.programFolder) { $details += "Carpeta del programa: $($app.programFolder.root)/$($app.programFolder.path)" }
         if ($details.Count -gt 0) { Write-Host ("      " + ($details -join '  |  ')) -ForegroundColor DarkGray }
     }
 }
@@ -270,6 +305,7 @@ function Get-InstalledAppCandidates {
                 Name = $appName
                 Source = 'Programa instalado'
                 AppxName = ''
+                ProgramFolder = (ConvertTo-ProgramFolderReference -InstallLocation ([string]$entry.InstallLocation))
             })
         }
     }
@@ -311,6 +347,7 @@ function Get-InstalledAppCandidates {
                 Name = $displayName
                 Source = 'Paquete Appx'
                 AppxName = $appxName
+                ProgramFolder = ''
             })
         }
     }
@@ -360,6 +397,7 @@ function Request-InstalledApp {
     Write-Host "`nAPPS INSTALADAS DE ESTE USUARIO" -ForegroundColor Cyan
     for ($i = 0; $i -lt $installedApps.Count; $i++) {
         Write-Host ("  {0,3}. {1}  [{2}]" -f ($i + 1), $installedApps[$i].Name, $installedApps[$i].Source) -ForegroundColor Gray
+        if ($installedApps[$i].ProgramFolder) { Write-Host "        Carpeta detectada: $($installedApps[$i].ProgramFolder)" -ForegroundColor DarkGray }
     }
 
     $choice = Read-Host 'Escribe el número de la app para solicitar que la agreguen; Enter cancela'
@@ -381,7 +419,8 @@ function Request-InstalledApp {
     if ($wingetId) { Write-Host "ID de WinGet detectado: $wingetId" -ForegroundColor Gray }
     elseif (-not $app.AppxName) { Write-Host 'No encontré una coincidencia exacta de WinGet; ese campo quedará vacío para que lo revises.' -ForegroundColor Yellow }
     if ($app.AppxName) { Write-Host "Nombre Appx: $($app.AppxName)" -ForegroundColor Gray }
-    Write-Host 'Los residuos no se adivinan; el formulario los dejará vacíos para que los revises.' -ForegroundColor Gray
+    if ($app.ProgramFolder) { Write-Host "Carpeta detectada: $($app.ProgramFolder)" -ForegroundColor Gray }
+    else { Write-Host 'No pude detectar la carpeta de instalación; usa -Info para buscar una y verifica que sea la correcta.' -ForegroundColor Yellow }
     $confirmation = Read-Host 'Escribe SOLICITAR para abrir el formulario de GitHub'
     if (-not [string]::Equals($confirmation, 'SOLICITAR', [System.StringComparison]::Ordinal)) {
         Write-Host 'Solicitud cancelada.' -ForegroundColor Yellow
@@ -391,6 +430,7 @@ function Request-InstalledApp {
     $settings = Get-RepositorySettings
     $titleText = "Solicitar agregar: $($app.Name)"
     $appxValue = [string]$app.AppxName
+    $programFolderValue = [string]$app.ProgramFolder
     $description = @"
 ### Nombre de la app
 $($app.Name)
@@ -401,10 +441,8 @@ $wingetId
 ### Nombres de paquetes Appx
 $appxValue
 
-### Rutas de residuos
-
-### Confirmación
-- [ ] Confirmo que estos identificadores y rutas corresponden a esta app.
+### Carpeta del programa
+$programFolderValue
 "@
     Write-Host "`nCOPIA ESTOS DATOS EN EL ISSUE DE GITHUB" -ForegroundColor Cyan
     Write-Host "Título: $titleText" -ForegroundColor White
@@ -422,7 +460,7 @@ $appxValue
     else {
         Write-Host 'Copia manualmente la descripción de arriba y pégala en GitHub.' -ForegroundColor Yellow
     }
-    Write-Host 'Revisa los identificadores y las rutas; cambia [ ] por [x] solo si confirmas los datos.' -ForegroundColor Yellow
+    Write-Host 'Revisa los identificadores y la carpeta sugerida antes de enviar el issue.' -ForegroundColor Yellow
     if (-not $wingetId -and -not $appxValue) {
         Write-Host 'Falta un ID de WinGet o un nombre Appx exacto; el issue no se agregará a la lista hasta completarlo.' -ForegroundColor Yellow
     }
@@ -446,9 +484,7 @@ function Invoke-SelectedApps {
         Write-Host "  • $($app.name)" -ForegroundColor Gray
         if ($app.wingetId) { Write-Host "      WinGet: $($app.wingetId)" -ForegroundColor DarkGray }
         foreach ($packageName in @($app.appxNames)) { Write-Host "      Appx: $packageName" -ForegroundColor DarkGray }
-        foreach ($residue in @($app.residualPaths)) {
-            if ($null -ne $residue) { Write-Host "      Residuo: $($residue.root)/$($residue.path)" -ForegroundColor DarkGray }
-        }
+        if ($app.programFolder) { Write-Host "      Carpeta del programa: $($app.programFolder.root)/$($app.programFolder.path)" -ForegroundColor DarkGray }
     }
 
     if ($WhatIfPreference) {
@@ -457,7 +493,7 @@ function Invoke-SelectedApps {
     }
 
     $expected = if ($BatchAll) { 'BORRAR TODO' } else { 'BORRAR SELECCION' }
-    Write-Host "`nSolo se borrarán las rutas de residuos permitidas que aparecen arriba." -ForegroundColor Yellow
+    Write-Host "`nSolo se borrarán las carpetas de programa específicas que aparecen arriba." -ForegroundColor Yellow
     $confirmation = Read-Host "Escribe $expected para continuar (cualquier otra respuesta cancela)"
     if (-not [string]::Equals($confirmation, $expected, [System.StringComparison]::Ordinal)) {
         Write-Host 'Operación cancelada. No se hicieron cambios.' -ForegroundColor Yellow
@@ -490,9 +526,7 @@ function Invoke-AppRemoval {
     Write-Host "`n$($App.name)" -ForegroundColor White
     if ($App.wingetId) { Write-Host "  WinGet: $($App.wingetId)" }
     foreach ($packageName in @($App.appxNames)) { Write-Host "  Appx: $packageName" }
-    foreach ($residue in @($App.residualPaths)) {
-        if ($null -ne $residue) { Write-Host "  Residuo: $($residue.root)/$($residue.path)" }
-    }
+    if ($App.programFolder) { Write-Host "  Carpeta del programa: $($App.programFolder.root)/$($App.programFolder.path)" }
 
     $warnings = @()
 
@@ -505,7 +539,7 @@ function Invoke-AppRemoval {
         else {
             & winget.exe uninstall --id ([string]$App.wingetId) --exact --silent --accept-source-agreements --disable-interactivity
             if ($LASTEXITCODE -ne 0) {
-                Write-Warning "WinGet devolvio el codigo $LASTEXITCODE para '$($App.name)'; continuare con Appx y residuos indicados."
+                Write-Warning "WinGet devolvio el codigo $LASTEXITCODE para '$($App.name)'; continuare con Appx y la carpeta indicada."
                 $warnings += "WinGet devolvio el codigo $LASTEXITCODE."
             }
         }
@@ -519,12 +553,11 @@ function Invoke-AppRemoval {
         }
     }
 
-    foreach ($residue in @($App.residualPaths)) {
-        if ($null -eq $residue) { continue }
-        $target = Resolve-ResiduePath -Residue $residue
+    if ($null -ne $App.programFolder) {
+        $target = Resolve-ProgramFolder -ProgramFolder $App.programFolder
         if (Test-Path -LiteralPath $target) {
             Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction Stop
-            Write-Host "  Se borro: $target"
+            Write-Host "  Se borró la carpeta del programa: $target"
         }
     }
 
@@ -533,7 +566,7 @@ function Invoke-AppRemoval {
 }
 
 try {
-    Clear-Host
+    Clear-ConsoleScreen
     Show-ToolHeader
 
     if ($Info) {
@@ -579,16 +612,16 @@ try {
             '1' {
                 if ($apps.Count -eq 0) { Write-Host 'No hay apps en la lista web.' -ForegroundColor Yellow }
                 else { Invoke-SelectedApps -Selected $apps -BatchAll }
-                Wait-ForMenuReset
+                Reset-MenuScreen
             }
             '2' {
                 Request-InstalledApp
-                Wait-ForMenuReset
+                Reset-MenuScreen
             }
-            '0' { Clear-Host; return }
+            '0' { Clear-ConsoleScreen; return }
             default {
                 Write-Host 'Opción inválida.' -ForegroundColor Yellow
-                Wait-ForMenuReset
+                Reset-MenuScreen
             }
         }
     }
